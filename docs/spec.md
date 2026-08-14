@@ -19,11 +19,15 @@ Competitive gap (researched 2026-08-14): ~7 thin solo-dev iOS "days since" apps 
 6. **Edit Tracker** — rename, change Threshold, manage Variants, change Category, Archive.
 7. **Archive** — hides from home, keeps history. Hard delete only from archived view, with confirm.
 8. **Offline-lite** — app shell opens without network; log-taps queue in an outbox and replay when online (see ADR-0002).
+9. **Observed interval** — tracker detail shows "actually every ~Nd": mean gap over the last 10 Entries (per-Variant for Variant rows), shown only after ≥3 Entries.
+10. **Threshold suggestion** — on tracker detail, when ≥3 Entries exist and the observed interval deviates >30% from the Threshold: inline hint ("actually every ~40d — update threshold?") with one-tap accept. Thresholdless Trackers with ≥3 Entries get a gentler "set threshold?" hint. Never on the home list, never a notification.
+11. **Search** — magnifier icon in the home header expands to an input; client-side filter over Tracker/Variant names.
 
 ## Domain rules
 
 - **Threshold optional.** Thresholdless Trackers never become Overdue; they're a pure logger (last haircut).
-- **Variants have independent last-done state** and share the parent's Threshold. On home, each Variant is its own row ("Tyre pressure · volvo"). A Tracker without Variants is one row.
+- **Variants have independent last-done state.** A Variant may override the parent's Threshold (`thresholdDays`, nullable — null inherits). A thresholdless parent may still have thresholded Variants: the Variant gets its own urgency, tracker-level state stays neutral. Urgency ratio and the "every Yd" subtitle always use the effective (own-or-inherited) value. On home, each Variant is its own row ("Tyre pressure · volvo"). A Tracker without Variants is one row.
+- **Observed interval** = mean gap between consecutive Entries over the last 10 Entries, computed per-Variant for Variant rows; defined only once ≥3 Entries exist.
 - **Entries** belong to a Tracker, optionally to a Variant. A Variant's last-done counts only Entries with that Variant; tracker-level (variantless) Entries show in history but don't reset any Variant. (Edge: adding Variants to a Tracker that already has Entries.)
 - **Duration** on an Entry is optional and informational (run took 40m). It does not affect Overdue math.
 - **Urgency ratio** = days since last Entry ÷ Threshold days. States:
@@ -51,11 +55,17 @@ Seeded on first run: house, car, health, personal (each with a color). User can 
 ```
 categories  id, name, color, createdAt
 trackers    id, name, categoryId?, thresholdDays?, archivedAt?, createdAt
-variants    id, trackerId, name, createdAt
+variants    id, trackerId, name, thresholdDays?, deletedAt?, createdAt
 entries     id, trackerId, variantId?, occurredAt, durationMinutes?, note?, createdAt
 ```
 
-Full Entry history kept forever (enables v2 stats). Hard delete of a Tracker cascades to variants + entries.
+- **IDs**: UUIDv7, text primary keys, all tables. Client may generate (required for outbox entries); server generates when absent.
+- **Timestamps**: UTC ISO-8601 text with milliseconds. `createdAt` always server-stamped; `occurredAt` is the client-supplied event time (dual timestamps on entries).
+- **Deletes**: Tracker hard-delete cascades variants + entries (archived-only, confirmed in UI). Category delete sets `trackers.categoryId` null. **Variant delete is a soft delete** (`deletedAt`): entries keep their `variantId` so history keeps its label; deleted variants excluded from bootstrap/home; no undelete UI in v1.
+- **Variants added to a Tracker with existing Entries**: old entries stay tracker-level (`variantId` null); new variants start at "never".
+- **Indexes**: `entries(trackerId, occurredAt)`, `entries(variantId)`, `variants(trackerId)`, `trackers(categoryId)`.
+
+Full Entry history kept forever (enables v2 stats).
 
 ## API (REST, all under /api)
 
@@ -63,22 +73,34 @@ Server is dumb CRUD; client computes ratios and sort (ADR-0001).
 
 ```
 POST   /auth/login                {password} → session cookie (skip entirely if LAPSE_PASSWORD unset)
-GET    /bootstrap                 categories + trackers + variants + latest entry per tracker/variant
+GET    /health                    unauthenticated liveness (Docker HEALTHCHECK target)
+GET    /bootstrap                 see payload below
 POST   /trackers                  create (name, categoryId?, thresholdDays?, variants?)
 PATCH  /trackers/:id              edit / archive (archivedAt) / unarchive
 DELETE /trackers/:id              hard delete (archived only)
-POST   /trackers/:id/variants     add variant
-PATCH  /variants/:id              rename
-DELETE /variants/:id
-POST   /entries                   {trackerId, variantId?, occurredAt?, durationMinutes?, note?} — occurredAt defaults now
-GET    /trackers/:id/entries      history, newest first, paginated
+POST   /trackers/:id/variants     add variant (name, thresholdDays?)
+PATCH  /variants/:id              rename / set or clear thresholdDays
+DELETE /variants/:id              soft delete (deletedAt)
+POST   /entries                   {id?, trackerId, variantId?, occurredAt?, durationMinutes?, note?} — occurredAt defaults now
+GET    /trackers/:id/entries      history, cursor-paginated: ?cursor=<entryId>&limit=50, occurredAt desc (id desc tiebreak)
 PATCH  /entries/:id
 DELETE /entries/:id
 CRUD   /categories
 ```
 
-`POST /entries` accepts a client-generated `id` (uuid) so outbox replays are idempotent.
+**Bootstrap payload** (one launch-time round trip, hydrates the query cache; archived trackers included with flag set, client filters; deleted variants excluded; observed-interval computes client-side from the history fetch, not here):
+
+```
+{ categories: [...],
+  trackers: [{ id, name, categoryId, thresholdDays, archivedAt, createdAt,
+               latestEntry,               // latest VARIANTLESS entry
+               variants: [{ id, name, thresholdDays, latestEntry }] }] }
+```
+
+**Idempotency**: `POST /entries` accepts a client-generated UUIDv7 `id`; a duplicate id returns 200 with the existing row, so outbox replays are safe. Archived Trackers accept entries (outbox may replay an entry queued before archiving); the UI hides them regardless.
+
+**Validation** (Zod via `@hono/zod-validator`, 400 with field errors): `name` trimmed 1–100 chars; `thresholdDays` int 1–3650, nullable; `durationMinutes` int 1–1440, nullable; `note` ≤ 500 chars; `occurredAt` valid ISO ≤ now + 5 min skew allowance; `color` `#rrggbb`.
 
 ## Out of scope for v1
 
-See `docs/v2-checklist.md`. Notably: notifications (v1.1 via ntfy), stats, NFC, widgets, multi-user, export UI, per-Variant Threshold override.
+See `docs/v2-checklist.md`. Notably: notifications (v1.1 via ntfy), stats/charts beyond the observed-interval line, NFC, widgets, multi-user, export UI.

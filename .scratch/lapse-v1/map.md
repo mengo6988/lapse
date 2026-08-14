@@ -30,11 +30,11 @@ Pre-map decisions from the grilling session of 2026-08-14 (these predate the map
 - [iOS PWA update & offline behavior research](issues/02-research-ios-pwa-update-offline.md) — iOS won't update SW mid-session; adopt periodic `registration.update()` + `immediate: true` + `vite:preloadError` reload + no-cache headers on sw.js/index.html; persist query cache to IndexedDB (`idb-keyval`), not localStorage; all client storage is disposable — server is record of truth
 - [Outbox implementation research](issues/03-research-outbox-implementations.md) — hand-rolled ~100-line outbox in IndexedDB (UUIDv7 ids, serial drain, exponential backoff + jitter); TanStack mutation persistence rejected (reload/race/parallel-replay footguns); Background Sync API unsupported on iOS, replay is foreground-only
 - [UI direction reference research](issues/04-research-ui-direction-references.md) — 10 named references (Flighty, Teenage Engineering, Tody, Planta, Timepage, split-flap boards…); three packaged directions for the UI/UX grill: "Departure Board" / "Studio Mono" / "Warm Ledger"; accent-on-neutral OKLCH token rules; tap-to-log motion timings
+- [Feature re-scope grill](issues/05-grill-feature-rescope.md) — pulled into v1: observed-interval line, threshold suggestions, per-Variant Threshold override (`variants.thresholdDays` nullable, null inherits), home search; export + notifications + rest stay v2; no new tickets — mechanics settled in-round, detail absorbed by the UI/UX and Schema & API grills; `docs/spec.md` + `docs/v2-checklist.md` updated
+- [Schema & API review grill](issues/07-grill-schema-api.md) — UUIDv7 text PKs + ISO-text timestamps everywhere; variant delete = soft delete (`deletedAt`, history keeps its label); cursor pagination; bootstrap payload shape fixed; Zod validation rules per endpoint; archived trackers accept outbox-replayed entries; indexes + `/api/health` added; spec's data-model + API sections rewritten, ready for first Drizzle schema
 
 ## Not yet specified
 
-- **Stack-swap decision** — only exists if Stack validation research surfaces a concrete failure; can't be phrased sharper until findings land.
-- **Per-feature tickets from re-scope** — the Feature re-scope grill may pull v2-checklist items into v1; each pulled feature graduates to its own decision ticket (schema/UI impact).
 - **Build handoff shape** — once all grills close: how the finished plan is packaged for implementation (task breakdown, `/tdd` entry point, milestone order). Sharp only at the end.
 - **SW update prompt UX** — likely folds into the Offline-lite grill; graduates to its own ticket only if research shows unexpected depth.
 

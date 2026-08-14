@@ -66,7 +66,7 @@ Color as accent (dot/bar per row, Tody-style), not full-row fills — full-red s
 ## Feel
 
 - Mobile-first layout; usable at desktop width but not optimised for it.
-- Light + dark mode from day one (CSS tokens).
+- Dark mode only in v1 (settled in UI/UX grill 2026-08-14). CSS tokens structured so a light theme can be added later without component changes.
 - Optimistic everything: log-tap feedback is instant even offline (outbox), subtle "pending sync" indicator when outbox non-empty.
 - Anti-generic guardrail for implementation: no default card grids, no stock component-library look — commit to a distinct direction in the UI/UX grill (big-type list aesthetic is the working candidate).
 
