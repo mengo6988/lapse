@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CategoryChips } from '../list/CategoryChips'
 import { ListSearchRow } from '../list/ListSearchRow'
 import { ListRowItem } from '../list/ListRowItem'
-import { buildListRows, type ListRow } from '../list/buildListRows'
+import { trackerRows, type ListRow } from '../domain/trackerRows'
 import { filterListRows } from '../list/filterListRows'
 import { useSearchOpenParam } from '../list/useSearchOpenParam'
 import '../list/list.css'
@@ -88,7 +88,7 @@ export function ListRoute() {
 
   const now = new Date()
   const categories = data?.categories ?? []
-  const liveRows = buildListRows(data?.trackers ?? [], now)
+  const liveRows = trackerRows(data?.trackers ?? [], now, { includeArchived: false, sortByUrgency: true })
   const isFrozen = windowState.kind === 'open'
   const orderedRows = isFrozen ? applyFrozenOrder(liveRows, windowState.freeze.listOrder, listRowId) : liveRows
   const visibleRows = filterListRows(orderedRows, { categoryId: selectedCategoryId, query })

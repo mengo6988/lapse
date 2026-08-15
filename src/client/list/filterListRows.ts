@@ -3,9 +3,9 @@
  * ("Category chips filter the list; sort order unchanged within the
  * filter") and § Features 11 (search over Tracker/Variant names). both
  * filters are `.filter()` passes over an already-sorted row array, never a
- * re-sort — the caller (buildListRows) owns ordering.
+ * re-sort — the caller (domain/trackerRows) owns ordering.
  */
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 
 export interface ListFilter {
   readonly categoryId: string | null

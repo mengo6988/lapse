@@ -11,7 +11,7 @@
  * around it.
  */
 import { daysAgo } from '../domain/daysAgo'
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 
 const NEVER_DASH = '—'
 

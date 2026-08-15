@@ -3,7 +3,7 @@ import { SwipeRevealRow } from '../detail'
 import { logSheetStore } from '../log/logSheetStore'
 import { useLongPress } from '../log/useLongPress'
 import { formatRowCount, formatRowSubline } from './formatListRow'
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 
 interface ListRowItemProps {
   row: ListRow

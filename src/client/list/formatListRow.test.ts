@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 import { formatRowCount, formatRowSubline } from './formatListRow'
 
 const NOW = new Date('2026-08-15T00:00:00.000Z')

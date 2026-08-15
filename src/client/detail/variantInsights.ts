@@ -11,7 +11,7 @@
 import type { Entry } from '../api'
 import { observedIntervalDays } from '../domain/interval'
 import { suggestThreshold, type ThresholdSuggestion } from '../domain/suggestion'
-import type { ListRow } from '../list/buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 
 export interface VariantInsight {
   readonly rowKey: string

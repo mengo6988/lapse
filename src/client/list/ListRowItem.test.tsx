@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { logSheetStore } from '../log/logSheetStore'
 import { ListRowItem } from './ListRowItem'
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 

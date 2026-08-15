@@ -8,7 +8,7 @@
  * are specific to detail: observed interval and the suggestion hint.
  */
 import { formatRowCount, formatRowSubline } from '../list/formatListRow'
-import type { ListRow } from '../list/buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 import type { VariantInsight } from './variantInsights'
 
 export interface VariantSummaryRowProps {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Entry } from '../api'
-import type { ListRow } from '../list/buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 import { buildVariantInsights } from './variantInsights'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')

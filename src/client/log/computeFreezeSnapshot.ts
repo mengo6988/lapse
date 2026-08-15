@@ -15,10 +15,10 @@
  * for display).
  */
 import type { Tracker } from '../api'
+import { trackerRows } from '../domain/trackerRows'
 import { buildHomeRows } from '../home/homeRows'
 import { selectQuickLogRows } from '../home/selectQuickLogRows'
 import { selectSlippingRows } from '../home/selectSlippingRows'
-import { buildListRows } from '../list/buildListRows'
 
 export interface FreezeSnapshot {
   readonly slippingIds: readonly string[]
@@ -31,7 +31,7 @@ export function computeFreezeSnapshot(trackers: readonly Tracker[], now: Date): 
   const slippingRows = selectSlippingRows(homeRows, now)
   const slippingIds = new Set(slippingRows.map((row) => row.id))
   const quickLogRows = selectQuickLogRows(homeRows, slippingIds, now)
-  const listRows = buildListRows(trackers, now)
+  const listRows = trackerRows(trackers, now, { includeArchived: false, sortByUrgency: true })
 
   return {
     slippingIds: slippingRows.map((row) => row.id),

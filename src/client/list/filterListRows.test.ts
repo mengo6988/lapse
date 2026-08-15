@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ListRow } from './buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 import { filterListRows } from './filterListRows'
 
 function row(overrides: Partial<ListRow>): ListRow {

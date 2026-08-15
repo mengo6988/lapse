@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { ListRow } from '../list/buildListRows'
+import type { ListRow } from '../domain/trackerRows'
 import type { VariantInsight } from './variantInsights'
 import { VariantSummaryRow } from './VariantSummaryRow'
 
