@@ -7,6 +7,7 @@ import { selectQuickLogRows } from '../home/selectQuickLogRows'
 import { selectSlippingRows } from '../home/selectSlippingRows'
 import { SlippingSection } from '../home/SlippingSection'
 import { applyFrozenOrder } from '../log/applyFrozenOrder'
+import { LogSheetHost } from '../log/LogSheetHost'
 import { LogToast } from '../log/LogToast'
 import '../log/log.css'
 import { useLogRow } from '../log/useLogRow'
@@ -23,16 +24,24 @@ const homeRowId = (row: HomeRow) => row.id
 /**
  * home digest (docs/design.md § Home, build ticket 10 + tap-to-log ticket
  * 12): the top-3 slipping rows, quick-log tiles, a footer into the full
- * list, and the log toast. While a log's 5s undo window is open
- * (src/client/log/logWindowStore.ts), slipping/quick-log membership and
- * order come from that window's frozen snapshot instead of the live
- * selectors, so the just-tapped row stays pinned in its slot; on expiry the
- * store's resort token flips and this route fades back into the live order.
+ * list, the log toast, and the long-press log sheet host (build ticket 13).
+ * While a log's 5s undo window is open (src/client/log/logWindowStore.ts),
+ * slipping/quick-log membership and order come from that window's frozen
+ * snapshot instead of the live selectors, so the just-tapped row stays
+ * pinned in its slot; on expiry the store's resort token flips and this
+ * route fades back into the live order.
+ *
+ * <LogSheetHost/> is mounted here (and again in ListRoute.tsx) rather than
+ * once in AppShell, matching <LogToast/>'s own precedent — both read the
+ * one shared module store, so a long-press's sheet stays open across
+ * navigation exactly like the undo toast does. SlippingCard and
+ * QuickLogTile open it directly on long-press (src/client/log/
+ * logSheetStore.ts), so this route doesn't wire a callback for it.
  */
 export function HomeRoute() {
   const { data } = useBootstrapQuery()
   const now = new Date()
-  const { logRow } = useLogRow()
+  const { logEntry } = useLogRow()
   const windowState = useLogWindowState()
   const resortToken = useResortToken()
 
@@ -59,7 +68,7 @@ export function HomeRoute() {
   }, [resortToken])
 
   function handleTap(row: HomeRow) {
-    logRow({ trackerId: row.trackerId, variantId: row.variantId })
+    logEntry({ trackerId: row.trackerId, variantId: row.variantId })
   }
 
   return (
@@ -68,6 +77,7 @@ export function HomeRoute() {
       <QuickLogSection rows={quickLogRows} now={now} onTap={handleTap} justLoggedId={justLoggedId} />
       <AllItemsFooter count={rows.length} />
       <LogToast />
+      <LogSheetHost />
     </section>
   )
 }

@@ -73,6 +73,7 @@ Server is dumb CRUD; client computes ratios and sort (ADR-0001).
 
 ```
 POST   /auth/login                {password} → session cookie (LAPSE_PASSWORD required; rate-limited 10/15min per IP — ADR-0003 amendment)
+POST   /auth/logout               clears the session cookie → 200 {ok:true}; unauthenticated, so it always succeeds even against a missing or stale cookie
 GET    /health                    unauthenticated liveness (Docker HEALTHCHECK target)
 GET    /bootstrap                 see payload below
 POST   /trackers                  create (name, categoryId?, thresholdDays?, variants?)
@@ -83,6 +84,7 @@ PATCH  /variants/:id              rename / set or clear thresholdDays
 DELETE /variants/:id              soft delete (deletedAt)
 POST   /entries                   {id?, trackerId, variantId?, occurredAt?, durationMinutes?, note?} — occurredAt defaults now
 GET    /trackers/:id/entries      history, cursor-paginated: ?cursor=<entryId>&limit=50, occurredAt desc (id desc tiebreak)
+GET    /entries                   the activity feed: same cursor contract, every Tracker at once, Entries of archived Trackers excluded
 PATCH  /entries/:id
 DELETE /entries/:id
 CRUD   /categories

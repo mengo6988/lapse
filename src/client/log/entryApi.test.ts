@@ -68,6 +68,59 @@ describe('postEntry', () => {
       postEntry({ id: 'entry-3', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' }),
     ).rejects.toMatchObject({ name: 'ApiError', status: 500 })
   })
+
+  // build ticket 13: the log sheet's optional duration/note ride the same
+  // POST as a plain tap's occurredAt.
+  it('includes durationMinutes and note in the body when given (build ticket 13)', async () => {
+    const fetchMock = stubFetch({
+      status: 201,
+      json: async () => ({
+        id: 'entry-4',
+        trackerId: 't1',
+        variantId: null,
+        occurredAt: '2026-08-15T00:00:00.000Z',
+        durationMinutes: 30,
+        note: 'felt good',
+        createdAt: '2026-08-15T00:00:00.000Z',
+      }),
+    })
+
+    await postEntry({
+      id: 'entry-4',
+      trackerId: 't1',
+      variantId: null,
+      occurredAt: '2026-08-15T00:00:00.000Z',
+      durationMinutes: 30,
+      note: 'felt good',
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+    expect(body).toEqual({
+      id: 'entry-4',
+      trackerId: 't1',
+      occurredAt: '2026-08-15T00:00:00.000Z',
+      durationMinutes: 30,
+      note: 'felt good',
+    })
+  })
+
+  it('omits durationMinutes and note from the body when null or unset, matching the plain-tap shape', async () => {
+    const fetchMock = stubFetch({ status: 201, json: async () => ({}) })
+
+    await postEntry({
+      id: 'entry-5',
+      trackerId: 't1',
+      variantId: null,
+      occurredAt: '2026-08-15T00:00:00.000Z',
+      durationMinutes: null,
+      note: null,
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+    expect(body).toEqual({ id: 'entry-5', trackerId: 't1', occurredAt: '2026-08-15T00:00:00.000Z' })
+  })
 })
 
 describe('deleteEntry', () => {

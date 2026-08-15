@@ -62,7 +62,7 @@ describe('useLogRow', () => {
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
 
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
 
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
     const cachedTracker = cache?.trackers.find((t) => t.id === tracker.id)
@@ -86,7 +86,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: volvo.id }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: volvo.id }))
     await act(async () => {
       await Promise.resolve()
     })
@@ -113,7 +113,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
 
     const openState = logWindowStore.read()
     if (openState.kind !== 'open') throw new Error('expected an open undo window')
@@ -151,7 +151,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
@@ -184,7 +184,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: 'boom' }) }))
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
 
     await act(async () => {
       await Promise.resolve()
@@ -208,7 +208,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
 
     const openState = logWindowStore.read()
     if (openState.kind !== 'open') throw new Error('expected an open undo window')
@@ -238,7 +238,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
 
     const openState = logWindowStore.read()
     if (openState.kind !== 'open') throw new Error('expected an open undo window')
@@ -273,7 +273,7 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
@@ -303,11 +303,11 @@ describe('useLogRow', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() }))
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
     const first = logWindowStore.read()
     if (first.kind !== 'open') throw new Error('expected an open undo window')
 
-    act(() => result.current.logRow({ trackerId: tracker.id, variantId: null }))
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
     const second = logWindowStore.read()
     if (second.kind !== 'open') throw new Error('expected an open undo window')
 
@@ -321,5 +321,244 @@ describe('useLogRow', () => {
       await Promise.resolve()
       await Promise.resolve()
     })
+  })
+})
+
+// build ticket 13's seam: logEntry(target, entryOverrides) widens logRow's
+// LoggableRow with an optional occurredAt/durationMinutes/note, so the log
+// sheet's backdated/annotated log reuses every choreography step below
+// (freeze, optimistic write, POST, undo) unchanged.
+describe('useLogRow entryOverrides (build ticket 13)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    logWindowStore.closeSilently()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+    session.reset()
+  })
+
+  it('an omitted occurredAt still defaults to the actual moment of logging, exactly like a plain tap', async () => {
+    vi.setSystemTime(new Date('2026-08-15T12:00:00.000Z'))
+    const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7 })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+    expect(body.occurredAt).toBe('2026-08-15T12:00:00.000Z')
+  })
+
+  it('an explicit occurredAt override backdates the Entry, both optimistically and in the POST body', async () => {
+    const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7 })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry(
+        { trackerId: tracker.id, variantId: null },
+        { occurredAt: '2026-08-14T09:00:00.000Z' },
+      ),
+    )
+
+    const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
+    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry?.occurredAt).toBe('2026-08-14T09:00:00.000Z')
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+    expect(body.occurredAt).toBe('2026-08-14T09:00:00.000Z')
+  })
+
+  it('durationMinutes/note overrides land on the optimistic Entry and the POST body, neither affecting freeze/undo', async () => {
+    const tracker = makeTracker({ name: 'run', thresholdDays: 7 })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry(
+        { trackerId: tracker.id, variantId: null },
+        { durationMinutes: 40, note: 'felt good' },
+      ),
+    )
+
+    const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
+    const cachedEntry = cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry
+    expect(cachedEntry?.durationMinutes).toBe(40)
+    expect(cachedEntry?.note).toBe('felt good')
+    expect(logWindowStore.read()).toMatchObject({ kind: 'open', toastMessage: 'logged ✓' })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+    expect(body.durationMinutes).toBe(40)
+    expect(body.note).toBe('felt good')
+  })
+
+  it('a failed POST for a backdated/annotated log reverts the optimistic entry and surfaces the same failure toast', async () => {
+    const priorEntry = makeEntry({ occurredAt: isoDaysAgo(10) })
+    const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7, latestEntry: priorEntry })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: 'boom' }) }))
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry(
+        { trackerId: tracker.id, variantId: null },
+        { occurredAt: isoDaysAgo(1), note: 'backdated' },
+      ),
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
+    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toEqual(priorEntry)
+    expect(logWindowStore.read()).toEqual({ kind: 'message', toastMessage: "couldn't log — try again" })
+  })
+})
+
+// Backdating is what the log sheet exists for, so a logged Entry is routinely
+// *older* than the row's existing latestEntry. `latestEntry` means latest —
+// overwriting it with an older Entry would make the row claim it was last
+// done longer ago than it was, and re-sort the list on that claim.
+describe('useLogRow backdating behind the existing latest Entry (build ticket 13)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    logWindowStore.closeSilently()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+    session.reset()
+  })
+
+  function backdatedBehindLatest() {
+    const priorEntry = makeEntry({ occurredAt: isoDaysAgo(1) })
+    const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7, latestEntry: priorEntry })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+    return { priorEntry, tracker, queryClient }
+  }
+
+  const latestOf = (queryClient: QueryClient, trackerId: string) =>
+    queryClient
+      .getQueryData<BootstrapPayload>(bootstrapQueryKey)
+      ?.trackers.find((t) => t.id === trackerId)?.latestEntry
+
+  it('leaves latestEntry alone when the backdated Entry is older than it', async () => {
+    const { priorEntry, tracker, queryClient } = backdatedBehindLatest()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry({ trackerId: tracker.id, variantId: null }, { occurredAt: isoDaysAgo(5) }),
+    )
+
+    expect(latestOf(queryClient, tracker.id)).toEqual(priorEntry)
+  })
+
+  it('still creates the Entry server-side — it belongs in the history, it just is not what the row summarises', async () => {
+    const { tracker, queryClient } = backdatedBehindLatest()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const backdated = isoDaysAgo(5)
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }, { occurredAt: backdated }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string).occurredAt).toBe(backdated)
+  })
+
+  it('does not claim the row was just logged, since its last-done did not move', async () => {
+    const { tracker, queryClient } = backdatedBehindLatest()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() }))
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry({ trackerId: tracker.id, variantId: null }, { occurredAt: isoDaysAgo(5) }),
+    )
+
+    const state = logWindowStore.read()
+    expect(state.kind).toBe('open')
+    // the toast and its undo still appear — the user did log something — but
+    // no row settles green or reads "now", because none of them changed.
+    if (state.kind === 'open') expect(state.rowId).toBeNull()
+  })
+
+  it('undo deletes the created Entry without disturbing the latestEntry it never replaced', async () => {
+    const { priorEntry, tracker, queryClient } = backdatedBehindLatest()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() =>
+      result.current.logEntry({ trackerId: tracker.id, variantId: null }, { occurredAt: isoDaysAgo(5) }),
+    )
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const state = logWindowStore.read()
+    if (state.kind === 'open') act(() => state.onUndo())
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(latestOf(queryClient, tracker.id)).toEqual(priorEntry)
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit)?.method === 'DELETE')).toBe(true)
+  })
+
+  it('a backdated Entry newer than the existing latest does still become the latest', () => {
+    const { tracker, queryClient } = backdatedBehindLatest()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => serverEntry() }))
+
+    // an hour ago, against a latest from a full day ago.
+    const backdated = new Date(Date.now() - 3_600_000).toISOString()
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }, { occurredAt: backdated }))
+
+    expect(latestOf(queryClient, tracker.id)?.occurredAt).toBe(backdated)
   })
 })

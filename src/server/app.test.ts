@@ -52,6 +52,42 @@ describe('POST /api/auth/login', () => {
   })
 })
 
+describe('POST /api/auth/logout', () => {
+  it('clears the session cookie and succeeds with no session at all', async () => {
+    const res = await testApp().request('/api/auth/logout', { method: 'POST' })
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ ok: true })
+    const cookie = res.headers.get('set-cookie') ?? ''
+    expect(cookie).toContain('Max-Age=0')
+  })
+
+  it('clears the session cookie even against a forged one — a forced logout must always land', async () => {
+    const res = await testApp().request('/api/auth/logout', {
+      method: 'POST',
+      headers: { cookie: 'lapse_session=not-the-real-token' },
+    })
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('set-cookie') ?? '').toContain('Max-Age=0')
+  })
+
+  it('clears a genuine logged-in session cookie', async () => {
+    const app = testApp()
+    const login = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: PASSWORD }),
+    })
+    const cookie = login.headers.get('set-cookie')!.split(';')[0]!
+
+    const res = await app.request('/api/auth/logout', { method: 'POST', headers: { cookie } })
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('set-cookie') ?? '').toContain('Max-Age=0')
+  })
+})
+
 describe('auth middleware', () => {
   it('401s an unauthenticated api call', async () => {
     const res = await testApp().request('/api/bootstrap')

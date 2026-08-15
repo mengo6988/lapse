@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { issueSession, matches, requireSession } from './auth.js'
+import { clearSession, issueSession, matches, requireSession } from './auth.js'
 import type { Db } from './db.js'
 import { loginRateLimit } from './rateLimit.js'
 import { bootstrapRoutes } from './routes/bootstrap.js'
@@ -33,6 +33,19 @@ export function createApp({ db, password }: AppDeps) {
       return c.json({ error: 'wrong password' }, 401)
     }
     issueSession(c, password)
+    return c.json({ ok: true })
+  })
+
+  // Unauthenticated, like login: a logout must always succeed, even against
+  // a missing or already-stale cookie, so the client is never blocked from
+  // leaving a broken session (build ticket 22). There is no server-side
+  // session store (the cookie is a deterministic HMAC of the password, see
+  // auth.ts) — clearing it only forgets the browser's copy, it can't revoke
+  // a token someone else captured. Single-user app on a SameSite=Lax cookie,
+  // so CSRF machinery isn't worth it for a call that only ever destroys the
+  // caller's own session.
+  app.post('/api/auth/logout', (c) => {
+    clearSession(c)
     return c.json({ ok: true })
   })
 

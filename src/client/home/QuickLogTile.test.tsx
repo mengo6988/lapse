@@ -1,7 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { logSheetStore } from '../log/logSheetStore'
 import { QuickLogTile } from './QuickLogTile'
 import type { HomeRow } from './homeRows'
+
+// jsdom has no PointerEvent constructor — see
+// src/client/detail/SwipeRevealRow.test.tsx's firePointerEvent for why a
+// MouseEvent dispatched under the pointer* type name is a faithful stand-in.
+function firePointerEvent(target: Element, type: string, clientX: number, clientY: number) {
+  fireEvent(target, new MouseEvent(type, { clientX, clientY, bubbles: true }))
+}
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
@@ -51,5 +59,61 @@ describe('QuickLogTile', () => {
 
     expect(screen.getByText('now')).toBeTruthy()
     expect(screen.getByRole('button').className).toContain('log-settle')
+  })
+})
+
+// build ticket 13: same long-press-opens-the-log-sheet rule as the slipping
+// card and list row (docs/design.md's cancel-on-move rule against the home
+// digest's own scroll still applies).
+describe('QuickLogTile long-press (build ticket 13)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    logSheetStore.close()
+    vi.useRealTimers()
+  })
+
+  it('holding the tile for 450ms opens the log sheet, without also logging a tap', () => {
+    const onTap = vi.fn()
+    render(<QuickLogTile row={baseRow} now={NOW} onTap={onTap} />)
+
+    const button = screen.getByRole('button')
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    vi.advanceTimersByTime(450)
+    firePointerEvent(button, 'pointerup', 10, 10)
+    fireEvent.click(button)
+
+    expect(logSheetStore.read()).toMatchObject({
+      mode: 'open',
+      target: { trackerId: baseRow.trackerId, variantId: baseRow.variantId },
+    })
+    expect(onTap).not.toHaveBeenCalled()
+  })
+
+  it('a press shorter than 450ms still logs immediately as a tap', () => {
+    const onTap = vi.fn()
+    render(<QuickLogTile row={baseRow} now={NOW} onTap={onTap} />)
+
+    const button = screen.getByRole('button')
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    vi.advanceTimersByTime(200)
+    firePointerEvent(button, 'pointerup', 10, 10)
+    fireEvent.click(button)
+
+    expect(onTap).toHaveBeenCalledWith(baseRow)
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
+  })
+
+  it('scrolling the digest (pointer move beyond the slop) cancels the pending long-press', () => {
+    render(<QuickLogTile row={baseRow} now={NOW} />)
+
+    const button = screen.getByRole('button')
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    firePointerEvent(button, 'pointermove', 10, 40)
+    vi.advanceTimersByTime(450)
+
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
   })
 })

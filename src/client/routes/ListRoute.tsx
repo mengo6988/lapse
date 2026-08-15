@@ -8,6 +8,7 @@ import { filterListRows } from '../list/filterListRows'
 import { useSearchOpenParam } from '../list/useSearchOpenParam'
 import '../list/list.css'
 import { applyFrozenOrder } from '../log/applyFrozenOrder'
+import { LogSheetHost } from '../log/LogSheetHost'
 import { LogToast } from '../log/LogToast'
 import '../log/log.css'
 import { useLogRow } from '../log/useLogRow'
@@ -26,12 +27,18 @@ const listRowId = (row: ListRow) => row.key
 /**
  * the full ledger (docs/design.md § List, frame 3b): every active row in
  * spec sort order, filterable by Category chip and searchable by name, plus
- * tap-to-log (build ticket 12). While a log's 5s undo window is open
- * (src/client/log/logWindowStore.ts), the row order comes from that
- * window's frozen snapshot instead of a fresh sort, applied *before*
- * category/search filtering — a just-logged row stays in its slot even if
- * it's mid-filter. On expiry the store's resort token flips and the list
- * fades back into its live sorted order.
+ * tap-to-log (build ticket 12) and the long-press log sheet host (build
+ * ticket 13). While a log's 5s undo window is open (src/client/log/
+ * logWindowStore.ts), the row order comes from that window's frozen
+ * snapshot instead of a fresh sort, applied *before* category/search
+ * filtering — a just-logged row stays in its slot even if it's mid-filter.
+ * On expiry the store's resort token flips and the list fades back into its
+ * live sorted order.
+ *
+ * <LogSheetHost/> is mounted here (and again in HomeRoute.tsx), matching
+ * <LogToast/>'s own precedent — ListRowItem opens it directly on long-press
+ * (src/client/log/logSheetStore.ts), so this route doesn't wire a callback
+ * for it.
  */
 export function ListRoute() {
   const { data } = useBootstrapQuery()
@@ -40,7 +47,7 @@ export function ListRoute() {
   const [query, setQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  const { logRow } = useLogRow()
+  const { logEntry } = useLogRow()
   const windowState = useLogWindowState()
   const resortToken = useResortToken()
 
@@ -70,7 +77,7 @@ export function ListRoute() {
   }
 
   function handleTap(row: ListRow) {
-    logRow({ trackerId: row.trackerId, variantId: row.variantId })
+    logEntry({ trackerId: row.trackerId, variantId: row.variantId })
   }
 
   // swiping a row left reveals "details" (docs/design.md § List) — the only
@@ -124,6 +131,7 @@ export function ListRoute() {
         </ul>
       )}
       <LogToast />
+      <LogSheetHost />
     </section>
   )
 }

@@ -63,22 +63,24 @@ describe('AppShell', () => {
     expect(screen.queryByRole('region', { name: 'home' })).toBeNull()
   })
 
-  it('tapping the activity tab reaches the honest stub', async () => {
+  // both of these reached an honest "not built yet" stub until build tickets
+  // 21 and 22 replaced them; the stub component is gone with them.
+  it('tapping the activity tab navigates to the activity route', async () => {
     session.markAuthed()
     renderShell()
     const user = userEvent.setup()
     await user.click(screen.getByRole('link', { name: 'activity' }))
-    expect(screen.getByText('activity')).toBeTruthy()
-    expect(screen.getByText(/not built yet/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'activity' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'home' })).toBeNull()
   })
 
-  it('tapping the settings tab reaches the honest stub', async () => {
+  it('tapping the settings tab navigates to the settings route', async () => {
     session.markAuthed()
     renderShell()
     const user = userEvent.setup()
     await user.click(screen.getByRole('link', { name: 'settings' }))
-    expect(screen.getByText('settings')).toBeTruthy()
-    expect(screen.getByText(/not built yet/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'settings' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'home' })).toBeNull()
   })
 
   it('an unknown path redirects home', () => {

@@ -14,12 +14,17 @@ export interface CreateEntryInput {
   readonly trackerId: string
   readonly variantId: string | null
   readonly occurredAt: string
+  /** build ticket 13: the log sheet's optional duration/note. Both nullable+optional server-side (src/server/routes/entries.ts), so a null/omitted value here is just left out of the body rather than sent explicitly. */
+  readonly durationMinutes?: number | null
+  readonly note?: string | null
 }
 
 /**
  * The create schema (src/server/routes/entries.ts) treats variantId as
  * `.optional()`, not `.nullable()` — a tracker-level log must omit the key
- * entirely rather than send `variantId: null`.
+ * entirely rather than send `variantId: null`. durationMinutes/note are
+ * `.nullable().optional()`, so omitting a null value is equally valid and
+ * keeps a plain tap's body exactly as small as it was before this ticket.
  */
 export async function postEntry(input: CreateEntryInput): Promise<Entry> {
   const body: Record<string, unknown> = {
@@ -28,6 +33,8 @@ export async function postEntry(input: CreateEntryInput): Promise<Entry> {
     occurredAt: input.occurredAt,
   }
   if (input.variantId !== null) body.variantId = input.variantId
+  if (input.durationMinutes != null) body.durationMinutes = input.durationMinutes
+  if (input.note != null) body.note = input.note
 
   return (await apiFetch('/api/entries', jsonRequest('POST', body))) as Entry
 }

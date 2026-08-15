@@ -1,4 +1,7 @@
+import { useRef } from 'react'
 import { SwipeRevealRow } from '../detail'
+import { logSheetStore } from '../log/logSheetStore'
+import { useLongPress } from '../log/useLongPress'
 import { formatRowCount, formatRowSubline } from './formatListRow'
 import type { ListRow } from './buildListRows'
 
@@ -29,19 +32,48 @@ interface ListRowItemProps {
  * "details" action that is the only way into the detail screen — it also
  * swallows the click that ends a swipe, so revealing a row never falls
  * through to the tap-to-log button underneath.
+ *
+ * Build ticket 13: the same button also owns a long-press timer
+ * (src/client/log/useLongPress.ts). SwipeRevealRow's own pointerdown/move/up
+ * live one level up on the sliding content div, so a swipe gesture's
+ * pointer events reach both it and this button — the hook's own
+ * move-cancels-the-pending-press rule is what keeps a swipe (or the list
+ * simply scrolling) from ever opening the sheet, without SwipeRevealRow
+ * needing to know this button has a long-press at all. Opening the sheet is
+ * a direct `logSheetStore.open()` call rather than a prop threaded from
+ * ListRoute, matching how the FAB opens trackerSheetStore.
  */
 export function ListRowItem({ row, now, onTap, justLogged = false, onOpenDetail }: ListRowItemProps) {
   const isDash = row.lastEntryAt === null
   const countModifier = isDash ? 'dash' : row.urgency === 'neutral' ? 'neutral' : 'default'
   const countText = justLogged ? 'now' : formatRowCount(row, now)
-  const buttonClassName = `list-row__button${justLogged ? ' log-settle' : ''}`
+  const buttonClassName = `list-row__button log-pressable${justLogged ? ' log-settle' : ''}`
+
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const longPress = useLongPress({
+    onLongPress: () =>
+      logSheetStore.open({ trackerId: row.trackerId, variantId: row.variantId }, buttonRef.current),
+  })
 
   return (
     <SwipeRevealRow
       className={`list-row list-row--${row.urgency}`}
       onDetails={() => onOpenDetail?.(row)}
     >
-      <button type="button" className={buttonClassName} onClick={onTap ? () => onTap(row) : undefined}>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={buttonClassName}
+        onPointerDown={longPress.onPointerDown}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
+        onPointerLeave={longPress.onPointerLeave}
+        onClick={() => {
+          if (longPress.shouldSuppressClick()) return
+          onTap?.(row)
+        }}
+      >
         <span className="list-row__body">
           <span className={`list-row__name list-row__name--${row.urgency}`}>
             {row.name}

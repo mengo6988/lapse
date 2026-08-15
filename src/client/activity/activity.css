@@ -1,0 +1,121 @@
+/*
+ * activity tab — recent-Entries feed (docs/design.md § Navigation: "activity
+ * = recent Entries feed", build ticket 21). Root tab, no back affordance, no
+ * screen title — matches HomeRoute/ListRoute, which rely on the tab bar to
+ * show the current section rather than repeating it in-page. Imported
+ * directly from ActivityRoute.tsx (not src/client/styles/index.css, which
+ * this ticket doesn't own), matching src/client/list/list.css and
+ * src/client/archived/archived.css's precedent.
+ */
+
+.activity-route {
+  padding-bottom: var(--space-9);
+}
+
+/* ---------- loading / error / empty states ---------- */
+.activity-route__empty,
+.activity-route__loading {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-md);
+  color: var(--color-text-muted);
+}
+
+.activity-route__error {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.activity-route__loading-more {
+  margin: 0;
+  padding: var(--space-5) var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.activity-route__sentinel {
+  height: 1px;
+}
+
+/* ---------- day sections ---------- */
+.activity-day__label {
+  margin: 0;
+  padding: var(--space-8) var(--space-8) var(--space-4);
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-regular);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.activity-day__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- rows ---------- */
+/* the whole row is a real <button> (accessibility — a real interactive
+   element, not a click handler on a <li>) so the entire tap target is the
+   44px+ min touch target, per docs/design.md's accessibility stance
+   elsewhere (list-row__button, detail-entry). background/border/cursor
+   come from the global button reset in src/client/styles/base.css. */
+.activity-entry {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-5);
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: var(--space-5) var(--space-8);
+  border-bottom: 1px solid var(--color-border-hairline);
+  text-align: left;
+  color: var(--color-text-primary);
+}
+
+.activity-entry:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.activity-entry__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.activity-entry__name {
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+.activity-entry__variant {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.activity-entry__meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.activity-entry__time {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}

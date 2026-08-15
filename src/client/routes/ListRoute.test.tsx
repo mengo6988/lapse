@@ -5,9 +5,17 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload, Category, Entry, Tracker } from '../api'
 import { session } from '../auth/session'
+import { logSheetStore } from '../log/logSheetStore'
 import { logWindowStore } from '../log/logWindowStore'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { ListRoute } from './ListRoute'
+
+// jsdom has no PointerEvent constructor — see
+// src/client/detail/SwipeRevealRow.test.tsx's firePointerEvent for why a
+// MouseEvent dispatched under the pointer* type name is a faithful stand-in.
+function firePointerEvent(target: Element, type: string, clientX: number, clientY: number) {
+  fireEvent(target, new MouseEvent(type, { clientX, clientY, bubbles: true }))
+}
 
 // frozen "now" matching the fixture below — local-time constructor (not a
 // UTC ISO string) so day-bucketing math is timezone-safe, per the
@@ -371,5 +379,83 @@ describe('ListRoute tap-to-log (build ticket 12)', () => {
     const hvacIndex = order.findIndex((t) => t.includes('change hvac filter'))
     const litterIndex = order.findIndex((t) => t.includes('clean litter box'))
     expect(hvacIndex).toBeGreaterThan(litterIndex)
+  })
+})
+
+describe('ListRoute long-press log sheet (build ticket 13)', () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    cleanup()
+    logSheetStore.close()
+    logWindowStore.closeSilently()
+    vi.stubGlobal('fetch', undefined)
+    session.reset()
+  })
+
+  it('holding a row opens the log sheet, and submitting it follows the same settle/toast/undo choreography as a tap', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          id: 'server-id',
+          trackerId: 'hvac',
+          variantId: null,
+          occurredAt: NOW.toISOString(),
+          durationMinutes: null,
+          note: null,
+          createdAt: NOW.toISOString(),
+        }),
+      }),
+    )
+    renderList()
+
+    const row = rowContaining('change hvac filter')
+    const button = row.querySelector('button')!
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    act(() => {
+      vi.advanceTimersByTime(450)
+    })
+    firePointerEvent(button, 'pointerup', 10, 10)
+    fireEvent.click(button)
+
+    expect(screen.getByRole('dialog', { name: 'log entry' })).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'log' }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(row.textContent).toContain('now')
+    expect(row.className).toContain('list-row--fresh')
+    expect(screen.getByRole('status').textContent).toContain('logged ✓')
+  })
+
+  it('dragging (swipe-reveal) a row never opens the log sheet, even past 450ms of held contact', () => {
+    renderList()
+
+    const row = rowContaining('change hvac filter')
+    const button = row.querySelector('button')!
+    // a genuine swipe-to-reveal drag, fired on the button itself (as a real
+    // touch would start there): horizontal movement well past both
+    // SwipeRevealRow's own direction lock and useLongPress's slop threshold.
+    // The events bubble from the button up to SwipeRevealRow's own
+    // pointerdown/move/up handlers on the wrapping content div, exactly as
+    // they would in the browser.
+    firePointerEvent(button, 'pointerdown', 200, 50)
+    firePointerEvent(button, 'pointermove', 100, 50)
+    act(() => {
+      vi.advanceTimersByTime(450)
+    })
+    firePointerEvent(button, 'pointerup', 100, 50)
+
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
   })
 })

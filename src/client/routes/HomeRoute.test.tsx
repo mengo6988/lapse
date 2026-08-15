@@ -4,10 +4,18 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload } from '../api'
 import { session } from '../auth/session'
+import { logSheetStore } from '../log/logSheetStore'
 import { logWindowStore } from '../log/logWindowStore'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { isoDaysAgo, makeEntry, makeTracker, makeVariant } from '../home/fixtures'
 import { HomeRoute } from './HomeRoute'
+
+// jsdom has no PointerEvent constructor — see
+// src/client/detail/SwipeRevealRow.test.tsx's firePointerEvent for why a
+// MouseEvent dispatched under the pointer* type name is a faithful stand-in.
+function firePointerEvent(target: Element, type: string, clientX: number, clientY: number) {
+  fireEvent(target, new MouseEvent(type, { clientX, clientY, bubbles: true }))
+}
 
 /**
  * seeds the query cache directly (fixture bootstrap data) instead of
@@ -228,5 +236,70 @@ describe('HomeRoute tap-to-log (build ticket 12)', () => {
     // now fresh, no longer overdue/due-soon — the slipping section reflects the live (unfrozen) computation again.
     expect(screen.getByText('nothing slipping')).toBeTruthy()
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('HomeRoute long-press log sheet (build ticket 13)', () => {
+  const NOW = new Date(2026, 7, 15, 12, 0, 0)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    cleanup()
+    logSheetStore.close()
+    logWindowStore.closeSilently()
+    vi.stubGlobal('fetch', undefined)
+    vi.useRealTimers()
+    session.reset()
+  })
+
+  it('holding a slipping card opens the log sheet, and submitting it follows the same settle/toast/undo choreography as a tap', async () => {
+    const hvac = makeTracker({
+      name: 'change hvac filter',
+      thresholdDays: 60,
+      latestEntry: makeEntry({ occurredAt: isoDaysAgo(74, NOW) }),
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          id: 'server-id',
+          trackerId: hvac.id,
+          variantId: null,
+          occurredAt: NOW.toISOString(),
+          durationMinutes: null,
+          note: null,
+          createdAt: NOW.toISOString(),
+        }),
+      }),
+    )
+    renderHome({ categories: [], trackers: [hvac] })
+
+    const card = screen.getByRole('button', { name: /change hvac filter/ })
+    firePointerEvent(card, 'pointerdown', 10, 10)
+    act(() => {
+      vi.advanceTimersByTime(450)
+    })
+    firePointerEvent(card, 'pointerup', 10, 10)
+    fireEvent.click(card)
+
+    expect(screen.getByRole('dialog', { name: 'log entry' })).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'log' }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    const slippingSection = screen.getByRole('region', { name: 'slipping' })
+    const settledCard = within(slippingSection).getByRole('button')
+    expect(settledCard.className).toContain('slipping-card--fresh')
+    expect(settledCard.textContent).toContain('now')
+    expect(screen.getByRole('status').textContent).toContain('logged ✓')
   })
 })

@@ -71,6 +71,8 @@ Canonical strings (extend here, not ad-hoc):
 | Log toast | `logged ✓` + **undo** action |
 | Home, nothing due | `nothing slipping` |
 | List, empty | `nothing here yet — add your first tracker` |
+| Activity, empty | `nothing logged yet` |
+| Activity, load failed | `couldn't load activity — try again` |
 | Search, no hits | `no matches` |
 | Save failed (queued) | `couldn't save — retrying` |
 | Undo failed offline | `couldn't undo — offline` |
@@ -124,10 +126,19 @@ Bottom sheet, everything optional, one screen:
 - Per-variant last-done summary if Variants exist.
 - Entry list newest-first: relative + absolute time, duration, note. Tap → edit sheet (same fields as log sheet) + delete.
 
+### Activity
+
+- Reverse-chronological feed of recent Entries across every Tracker — the "did I already log that?" screen. A root tab, so no back affordance.
+- Grouped into **device-local calendar days** under a `today` / `yesterday` / `aug 1` heading. The heading carries the relative time, so each row shows its **clock time** rather than repeating the same word down the whole section.
+- Row: tracker name (+ " · variant" suffix), duration and note when present, clock time. Tap → the Tracker detail screen, which is where an Entry is edited or deleted.
+- Archived Trackers' Entries never appear.
+
 ### Archived / Settings
 
 - Archived list: unarchive or hard-delete (confirm names the entry count being destroyed).
 - Settings: categories manager, logout. Nothing else in v1.
+- Categories manager: one row per Category — swatch, name, delete. Rename commits on blur, recolor on the native picker's own confirm; deleting states that its Trackers become uncategorised rather than disappearing.
+- Logout is a plain button, no confirm: it costs nothing, the password gets you straight back in. It clears the cookie, the query cache, and the persisted offline snapshot.
 
 ## Urgency color system
 
@@ -143,7 +154,7 @@ Color as accent (3px card bar / 2px underline bar per row), not full-row fills �
 
 ## Navigation
 
-- **Bottom tab bar** (from committed direction): home · list · **+** (create Tracker, center FAB) · activity · settings. Activity and settings screens not visually designed yet — follow the direction tokens; activity = recent Entries feed, settings = categories manager + archived list + logout.
+- **Bottom tab bar** (from committed direction): home · list · **+** (create Tracker, center FAB) · activity · settings. Activity and settings had no separate mock by decision — both were designed in-build on the committed tokens (build tickets 21 and 22), and are specified under § Screens above.
 - This supersedes the earlier interim decisions "FAB bottom-right" and "settings icon in header" — create lives in the center FAB, settings in the tab bar; header keeps the magnifier only (sliders icon dropped, prototype ticket 12).
 - Standalone PWA has **no OS back gesture** (iOS): every non-tab screen has an explicit back affordance; sheets dismiss by swipe-down.
 - Tabs are roots; max depth 2 (list → detail → edit sheet). Detail is entered by swiping a list row left and tapping **details**; archived is entered from settings.

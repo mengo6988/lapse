@@ -25,8 +25,14 @@ interface OpenState {
   readonly kind: 'open'
   /** the Entry id this window is undoable for — lets a stale async result recognise it's been superseded. */
   readonly entryId: string
-  /** HomeRow.id / ListRow.key of the tapped row — drives the settle animation and the frozen row's "now" count. */
-  readonly rowId: string
+  /**
+   * HomeRow.id / ListRow.key of the tapped row — drives the settle animation
+   * and the frozen row's "now" count. Null when the log didn't move any
+   * row's last-done (build ticket 13: a backdated Entry that lands behind
+   * the row's existing latest), so the toast and its undo still appear but
+   * nothing settles green or claims to have just happened.
+   */
+  readonly rowId: string | null
   readonly freeze: FreezeSnapshot
   readonly toastMessage: string
   readonly onUndo: () => void
@@ -78,7 +84,7 @@ export const logWindowStore = {
 
   open(params: {
     entryId: string
-    rowId: string
+    rowId: string | null
     freeze: FreezeSnapshot
     toastMessage: string
     onUndo: () => void

@@ -1,9 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { logSheetStore } from '../log/logSheetStore'
 import { ListRowItem } from './ListRowItem'
 import type { ListRow } from './buildListRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
+
+// jsdom has no PointerEvent constructor, and @testing-library/dom's
+// fireEvent only assigns properties that already exist on the fallback
+// Event it builds — clientX/clientY are silently dropped. A MouseEvent
+// carries them natively and React reads pointer-prop values the same way
+// regardless of the event's concrete constructor, so dispatching one under
+// the pointer* type name is a faithful stand-in (same pattern as
+// src/client/detail/SwipeRevealRow.test.tsx's firePointerEvent).
+function firePointerEvent(target: Element, type: string, clientX: number, clientY: number) {
+  fireEvent(target, new MouseEvent(type, { clientX, clientY, bubbles: true }))
+}
 
 function row(overrides: Partial<ListRow> = {}): ListRow {
   return {
@@ -88,5 +100,94 @@ describe('ListRowItem', () => {
 
     expect(screen.getByText('14d')).toBeTruthy()
     expect(tapButton().className).not.toContain('log-settle')
+  })
+})
+
+// build ticket 13: holding a row for 450ms opens the log sheet for that row
+// instead of logging a tap. SwipeRevealRow (ticket 15) already owns
+// pointerdown/move/up on the sliding content div, so these events reach both
+// it and the tap-to-log button's own long-press timer.
+describe('ListRowItem long-press (build ticket 13)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    logSheetStore.close()
+    vi.useRealTimers()
+  })
+
+  it('holding the row for 450ms opens the log sheet for that row, without also logging a tap', () => {
+    const onTap = vi.fn()
+    const theRow = row({ urgency: 'overdue', lastEntryAt: '2026-08-01T00:00:00.000Z' })
+    render(<ListRowItem row={theRow} now={NOW} onTap={onTap} />)
+
+    const button = tapButton()
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    vi.advanceTimersByTime(450)
+    firePointerEvent(button, 'pointerup', 10, 10)
+    fireEvent.click(button)
+
+    expect(logSheetStore.read()).toMatchObject({
+      mode: 'open',
+      target: { trackerId: theRow.trackerId, variantId: theRow.variantId },
+    })
+    expect(onTap).not.toHaveBeenCalled()
+  })
+
+  it('a press shorter than 450ms still logs immediately as a tap', () => {
+    const onTap = vi.fn()
+    const theRow = row({ urgency: 'overdue', lastEntryAt: '2026-08-01T00:00:00.000Z' })
+    render(<ListRowItem row={theRow} now={NOW} onTap={onTap} />)
+
+    const button = tapButton()
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    vi.advanceTimersByTime(200)
+    firePointerEvent(button, 'pointerup', 10, 10)
+    fireEvent.click(button)
+
+    expect(onTap).toHaveBeenCalledWith(theRow)
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
+  })
+
+  it('dragging the row (pointer move beyond the slop) cancels the pending long-press', () => {
+    const theRow = row({ urgency: 'overdue', lastEntryAt: '2026-08-01T00:00:00.000Z' })
+    render(<ListRowItem row={theRow} now={NOW} />)
+
+    const button = tapButton()
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    firePointerEvent(button, 'pointermove', 40, 10)
+    vi.advanceTimersByTime(450)
+
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
+  })
+
+  it('pointercancel cancels the pending long-press', () => {
+    const theRow = row({ urgency: 'overdue', lastEntryAt: '2026-08-01T00:00:00.000Z' })
+    render(<ListRowItem row={theRow} now={NOW} />)
+
+    const button = tapButton()
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    firePointerEvent(button, 'pointercancel', 10, 10)
+    vi.advanceTimersByTime(450)
+
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
+  })
+
+  it('the pointer leaving the row cancels the pending long-press', () => {
+    const theRow = row({ urgency: 'overdue', lastEntryAt: '2026-08-01T00:00:00.000Z' })
+    render(<ListRowItem row={theRow} now={NOW} />)
+
+    const button = tapButton()
+    firePointerEvent(button, 'pointerdown', 10, 10)
+    // React synthesizes onPointerLeave from the (bubbling) native
+    // "pointerout" event, not a raw "pointerleave" — real pointerleave
+    // doesn't bubble, so React listens for pointerout at the root and
+    // derives enter/leave from relatedTarget, the same way it handles
+    // mouseenter/mouseleave via mouseover/mouseout.
+    firePointerEvent(button, 'pointerout', 10, 10)
+    vi.advanceTimersByTime(450)
+
+    expect(logSheetStore.read()).toEqual({ mode: 'closed' })
   })
 })

@@ -1,17 +1,22 @@
 /**
- * The tap-to-log entry point (build ticket 12): optimistic Entry, POST,
+ * The tap-to-log entry point (build ticket 12), widened by ticket 13 into
+ * the shared entry point for the log sheet too: optimistic Entry, POST,
  * undo, and the frozen-order window, wired together. Home and List each
- * call this hook once and pass its `logRow` to their rows' `onTap`
- * (src/client/routes/HomeRoute.tsx, src/client/routes/ListRoute.tsx).
+ * call this hook once and pass `logEntry` (with no overrides) to their
+ * rows' `onTap` (src/client/routes/HomeRoute.tsx,
+ * src/client/routes/ListRoute.tsx), and the same function (this time with
+ * `entryOverrides`) to LogSheetHost's submit handler
+ * (src/client/log/LogSheetHost.tsx).
  *
- * Ticket 13's log sheet, ticket 17's outbox, and ticket 19's pending chip
- * all build on the pieces here rather than reinventing them:
- *   - ticket 13 wants the same settle/toast/undo/freeze choreography for a
- *     backdated/annotated log (a different `occurredAt`/duration/note, still
- *     one Entry per log). The cleanest seam is widening `logRow`'s
- *     `LoggableRow` into a `logEntry(target, entryOverrides)` that defaults
- *     `occurredAt` to now — everything from `applyEntry` down (freeze,
- *     optimistic write, POST, undo) is already entry-shape-agnostic.
+ * Ticket 13 wanted the same settle/toast/undo/freeze choreography for a
+ * backdated/annotated log (a different `occurredAt`/duration/note, still one
+ * Entry per log) — the seam is `logEntry(target, entryOverrides)`, where
+ * `entryOverrides` defaults `occurredAt` to the actual moment of logging
+ * (not frozen at sheet-open time) and `durationMinutes`/`note` to null.
+ * Everything from `applyEntry` down (freeze, optimistic write, POST, undo)
+ * was already entry-shape-agnostic, so widening it here didn't touch that.
+ *
+ * Ticket 17's outbox and ticket 19's pending chip build on this the same way:
  *   - ticket 17 replaces `postEntry`/`deleteEntry` (src/client/log/
  *     entryApi.ts) with outbox-queueing versions; the optimistic cache write
  *     (src/client/log/logCache.ts) and the freeze/undo choreography here are
@@ -34,33 +39,68 @@ import { logWindowStore } from './logWindowStore'
 
 export type LoggableRow = EntryTarget
 
+/**
+ * Build ticket 13: what the log sheet can override on an otherwise-ordinary
+ * log. `occurredAt` omitted (or undefined) means "the actual moment of
+ * logging" — resolved fresh inside `logEntry`, never frozen at whatever
+ * moment the sheet happened to be open, so leaving the sheet on its default
+ * "now" chip behaves identically to a plain tap even if the user pauses to
+ * type a note first.
+ */
+export interface EntryOverrides {
+  readonly occurredAt?: string
+  readonly durationMinutes?: number | null
+  readonly note?: string | null
+}
+
 const LOG_FAILURE_MESSAGE = "couldn't log — try again"
 const UNDO_FAILURE_MESSAGE = "couldn't undo — offline"
 
 export function useLogRow() {
   const queryClient = useQueryClient()
 
-  function logRow(target: LoggableRow) {
+  function logEntry(target: LoggableRow, overrides: EntryOverrides = {}) {
     const payload = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
     if (!payload) return
 
     const now = new Date()
     const freeze = computeFreezeSnapshot(payload.trackers, now)
     const previousLatestEntry = findLatestEntry(payload, target)
-    const rowId = target.variantId ?? target.trackerId
     const entryId = uuidv7()
     const nowIso = now.toISOString()
+    const occurredAt = overrides.occurredAt ?? nowIso
+    const durationMinutes = overrides.durationMinutes ?? null
+    const note = overrides.note ?? null
     const entry: Entry = {
       id: entryId,
       trackerId: target.trackerId,
       variantId: target.variantId,
-      occurredAt: nowIso,
-      durationMinutes: null,
-      note: null,
+      occurredAt,
+      durationMinutes,
+      note,
       createdAt: nowIso,
     }
 
-    applyEntry(entry)
+    /**
+     * Backdating is what the log sheet exists for (build ticket 13), so a
+     * logged Entry is routinely *older* than the row's existing latest one —
+     * "yesterday" against something already logged this morning. `latestEntry`
+     * means latest: writing an older Entry there would make the row claim it
+     * was last done longer ago than it was, re-sort the list as though it were
+     * more overdue, and persist that claim to the offline cache until the next
+     * bootstrap recomputed it. The Entry is still created either way — it
+     * belongs in the history, it just isn't what the row summarises.
+     *
+     * ISO-8601 UTC strings compare lexicographically in chronological order,
+     * which is what both sides of this are (`toISOString()` here, the same on
+     * the server).
+     */
+    const supersedesLatest = previousLatestEntry === null || occurredAt >= previousLatestEntry.occurredAt
+    // null when nothing settles: no row's last-done moved, so none should
+    // animate green or read "now" — but the toast and its undo still appear.
+    const rowId = supersedesLatest ? (target.variantId ?? target.trackerId) : null
+
+    if (supersedesLatest) applyEntry(entry)
 
     let outcome: 'pending' | 'success' | 'failure' = 'pending'
     let undoRequested = false
@@ -81,6 +121,8 @@ export function useLogRow() {
 
     /** the mirror of revertIfStillOurs, for when an undo's DELETE turns out to have failed: put the entry back so the client never claims an undo it can't back up. */
     function reapplyIfStillReverted() {
+      // nothing to put back if this Entry never became the row's latest.
+      if (!supersedesLatest) return
       const current = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
       if (current && findLatestEntry(current, target)?.id !== entryId) {
         applyEntry(entry)
@@ -118,7 +160,14 @@ export function useLogRow() {
 
     async function submit() {
       try {
-        await postEntry({ id: entryId, trackerId: target.trackerId, variantId: target.variantId, occurredAt: nowIso })
+        await postEntry({
+          id: entryId,
+          trackerId: target.trackerId,
+          variantId: target.variantId,
+          occurredAt,
+          durationMinutes,
+          note,
+        })
         outcome = 'success'
         if (undoRequested) {
           try {
@@ -140,5 +189,5 @@ export function useLogRow() {
     }
   }
 
-  return { logRow }
+  return { logEntry }
 }

@@ -53,6 +53,22 @@
   font-size: var(--text-size-sm);
 }
 
+/*
+ * Every surface that logs on tap and opens the log sheet on a 450ms hold
+ * (list rows, slipping cards, quick-log tiles — build ticket 13). Held that
+ * long, iOS Safari raises its own text-selection callout over the row and
+ * can cancel the pointer sequence out from under useLongPress, so the two
+ * native gestures competing with the hold are turned off here. `manipulation`
+ * also drops the double-tap-to-zoom delay, which is pure latency on surfaces
+ * whose whole job is a fast single tap.
+ */
+.log-pressable {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
 /* the just-logged row/card/tile eases into its fresh state in place (~340ms spring). */
 .log-settle {
   animation: log-settle var(--duration-settle) var(--ease-spring);
@@ -82,4 +98,86 @@
   to {
     opacity: 1;
   }
+}
+
+/*
+ * log sheet content (docs/design.md § Log sheet, build ticket 13). The
+ * sheet's chrome (grabber/header/close/swipe-down, scrim) is
+ * src/client/tracker/TrackerSheet.tsx + trackerSheet.css, reused as-is —
+ * this file only styles LogSheet.tsx's own fields, matching
+ * .tracker-form__* and .entry-edit__*'s visual language (same tokens) one
+ * feature area at a time rather than sharing classnames across directories.
+ */
+.log-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.log-sheet__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.log-sheet__label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.log-sheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.log-sheet__chip {
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-default);
+  background: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.log-sheet__chip--active {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+.log-sheet__input,
+.log-sheet__textarea {
+  min-height: var(--touch-target-min);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+  color: var(--color-text-primary);
+}
+
+.log-sheet__input--amount {
+  max-width: 96px;
+}
+
+.log-sheet__submit {
+  min-height: var(--touch-target-min);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-base);
+  transition: transform var(--duration-press) var(--ease-standard);
+}
+
+.log-sheet__submit:active {
+  transform: scale(0.98);
 }

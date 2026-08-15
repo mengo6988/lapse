@@ -1,0 +1,252 @@
+/*
+ * settings screen (docs/design.md § Archived/Settings) — a root tab, so
+ * unlike src/client/archived/archived.css this carries no back-affordance
+ * styling. Colocated with its components rather than added to
+ * src/client/styles/index.css, which this ticket doesn't own; imported
+ * directly from routes/SettingsRoute.tsx, matching src/client/archived/
+ * archived.css and src/client/tracker/trackerSheet.css's precedent.
+ *
+ * The category-row/add-form/dialog rules deliberately reuse the same
+ * tokens, radii, and touch-target sizing as trackerSheet.css/archived.css
+ * rather than inventing new visual language (build ticket 22 acceptance
+ * criteria) — the ledger x catppuccin mocha direction, applied to a new
+ * screen instead of a new style.
+ */
+
+/* ---------- screen ---------- */
+.settings-route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-9);
+  padding: var(--space-3) var(--space-8) var(--space-9);
+}
+
+.settings-route__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-xl);
+}
+
+.settings-route__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings-route__section-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: var(--font-weight-regular);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.settings-route__archive-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-family: var(--font-serif);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+/* ---------- categories list ---------- */
+.settings-categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.settings-categories__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-category-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+}
+
+/* a native <input type="color"> is the cheapest accessible recolor
+   affordance (build ticket 22 notes) — styled down to a plain round swatch,
+   its own picker UI is unstyleable and left alone. */
+.settings-category-row__swatch,
+.settings-add-category__swatch {
+  flex-shrink: 0;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  padding: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.settings-category-row__swatch::-webkit-color-swatch-wrapper {
+  padding: var(--space-1);
+}
+
+.settings-category-row__swatch::-webkit-color-swatch,
+.settings-add-category__swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+.settings-category-row__name,
+.settings-add-category__name {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--touch-target-min);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-serif);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+.settings-category-row__name:focus-visible,
+.settings-add-category__name:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-category-row__delete {
+  flex-shrink: 0;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-accent-overdue);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+/* ---------- add-category form ---------- */
+.settings-add-category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.settings-add-category__submit {
+  flex-shrink: 0;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-on-accent);
+}
+
+.settings-add-category__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ---------- delete-category dialog (mirrors src/client/archived/
+   archived.css's hard-delete dialog, softer confirm color since deleting a
+   Category doesn't destroy any Tracker) ---------- */
+.settings-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background: rgb(0 0 0 / 0.5);
+}
+
+.settings-dialog {
+  position: fixed;
+  left: var(--space-8);
+  right: var(--space-8);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: var(--z-sheet);
+  background: var(--color-surface-app);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings-dialog:focus {
+  outline: none;
+}
+
+.settings-dialog__copy {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+.settings-dialog__error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.settings-dialog__actions {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.settings-dialog__cancel,
+.settings-dialog__confirm {
+  flex: 1;
+  min-height: var(--touch-target-min);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+}
+
+.settings-dialog__cancel {
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.settings-dialog__confirm {
+  border: 1px solid var(--color-accent-overdue);
+  background: var(--color-accent-overdue);
+  color: var(--color-text-on-accent);
+}
+
+.settings-dialog__confirm:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ---------- logout ---------- */
+.settings-logout {
+  align-self: flex-start;
+  min-height: var(--touch-target-min);
+  padding: var(--space-5) var(--space-7);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+  color: var(--color-text-secondary);
+}
+
+.settings-logout:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

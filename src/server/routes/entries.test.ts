@@ -383,3 +383,77 @@ describe('GET /api/trackers/:id/entries', () => {
     expect(res.status).toBe(200)
   })
 })
+
+describe('GET /api/entries', () => {
+  it('lists entries across every Tracker newest-first', async () => {
+    const { db, app, cookie } = await setup()
+    insertTracker(db, { id: 'tracker-a' })
+    insertTracker(db, { id: 'tracker-b' })
+    insertEntry(db, { id: 'e-old', trackerId: 'tracker-a', occurredAt: '2026-01-01T00:00:00.000Z' })
+    insertEntry(db, { id: 'e-new', trackerId: 'tracker-b', occurredAt: '2026-01-03T00:00:00.000Z' })
+    insertEntry(db, { id: 'e-mid', trackerId: 'tracker-a', occurredAt: '2026-01-02T00:00:00.000Z' })
+
+    const res = await app.request('/api/entries', { headers: { cookie } })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entries.map((e: { id: string }) => e.id)).toEqual(['e-new', 'e-mid', 'e-old'])
+    expect(body.nextCursor).toBeNull()
+  })
+
+  it('excludes entries belonging to an archived Tracker', async () => {
+    const { db, app, cookie } = await setup()
+    insertTracker(db, { id: 'tracker-active' })
+    insertTracker(db, { id: 'tracker-archived', archivedAt: new Date().toISOString() })
+    insertEntry(db, { id: 'e-active', trackerId: 'tracker-active', occurredAt: '2026-01-01T00:00:00.000Z' })
+    insertEntry(db, { id: 'e-archived', trackerId: 'tracker-archived', occurredAt: '2026-01-02T00:00:00.000Z' })
+
+    const res = await app.request('/api/entries', { headers: { cookie } })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entries.map((e: { id: string }) => e.id)).toEqual(['e-active'])
+  })
+
+  it('paginates across a page boundary where two entries share an occurredAt, across different Trackers', async () => {
+    const { db, app, cookie } = await setup()
+    insertTracker(db, { id: 'tracker-a' })
+    insertTracker(db, { id: 'tracker-b' })
+    // Tie-break must be id DESC: 'e-c' sorts after 'e-b' lexicographically.
+    insertEntry(db, { id: 'e-a', trackerId: 'tracker-a', occurredAt: '2026-01-03T00:00:00.000Z' })
+    insertEntry(db, { id: 'e-b', trackerId: 'tracker-b', occurredAt: '2026-01-01T00:00:00.000Z' })
+    insertEntry(db, { id: 'e-c', trackerId: 'tracker-a', occurredAt: '2026-01-01T00:00:00.000Z' })
+
+    const firstPage = await app.request('/api/entries?limit=2', { headers: { cookie } })
+    expect(firstPage.status).toBe(200)
+    const firstBody = await firstPage.json()
+    expect(firstBody.entries.map((e: { id: string }) => e.id)).toEqual(['e-a', 'e-c'])
+    expect(firstBody.nextCursor).toBe('e-c')
+
+    const secondPage = await app.request(`/api/entries?limit=2&cursor=${firstBody.nextCursor}`, {
+      headers: { cookie },
+    })
+    expect(secondPage.status).toBe(200)
+    const secondBody = await secondPage.json()
+    expect(secondBody.entries.map((e: { id: string }) => e.id)).toEqual(['e-b'])
+    expect(secondBody.nextCursor).toBeNull()
+  })
+
+  it('400s for an invalid cursor', async () => {
+    const { app, cookie } = await setup()
+
+    const res = await app.request('/api/entries?cursor=nope', { headers: { cookie } })
+
+    expect(res.status).toBe(400)
+  })
+
+  it('accepts a large limit without erroring (cap applied silently)', async () => {
+    const { db, app, cookie } = await setup()
+    insertTracker(db)
+    insertEntry(db)
+
+    const res = await app.request('/api/entries?limit=9999', { headers: { cookie } })
+
+    expect(res.status).toBe(200)
+  })
+})

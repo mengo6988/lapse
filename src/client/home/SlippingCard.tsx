@@ -1,5 +1,8 @@
+import { useRef } from 'react'
 import { daysAgo } from '../domain/daysAgo'
 import { urgencyRatio, urgencyState } from '../domain/urgency'
+import { logSheetStore } from '../log/logSheetStore'
+import { useLongPress } from '../log/useLongPress'
 import { formatDayCount, formatSlippingSubline } from './format'
 import type { HomeRow } from './homeRows'
 
@@ -27,16 +30,43 @@ interface SlippingCardProps {
  * `thresholdDays`/`lastEntryAt` are still guaranteed non-null in both cases
  * (a thresholdless row is never selected into slipping, frozen or not), so
  * the non-null assertions below stay safe.
+ *
+ * Build ticket 13: this plain button also owns a long-press timer
+ * (src/client/log/useLongPress.ts) that opens the log sheet directly via
+ * `logSheetStore.open()` rather than a prop threaded from HomeRoute —
+ * SlippingSection (build ticket 10) sits in between and doesn't forward a
+ * long-press callback, so this is the only way in. No swipe wrapper here
+ * (unlike list rows), so the hook's own cancel-on-move rule only has the
+ * home digest's scroll to disambiguate against.
  */
 export function SlippingCard({ row, now, onTap, justLogged = false }: SlippingCardProps) {
   const state = urgencyState(row.lastEntryAt, row.thresholdDays, now)
   const ratio = urgencyRatio(row.lastEntryAt, row.thresholdDays, now)!
   const count = daysAgo(row.lastEntryAt, now)!
   const countLabel = justLogged ? 'now' : formatDayCount(count)
-  const className = `slipping-card slipping-card--${state}${justLogged ? ' log-settle' : ''}`
+  const className = `slipping-card slipping-card--${state} log-pressable${justLogged ? ' log-settle' : ''}`
+
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const longPress = useLongPress({
+    onLongPress: () =>
+      logSheetStore.open({ trackerId: row.trackerId, variantId: row.variantId }, buttonRef.current),
+  })
 
   return (
-    <button type="button" className={className} onClick={onTap ? () => onTap(row) : undefined}>
+    <button
+      ref={buttonRef}
+      type="button"
+      className={className}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerCancel}
+      onPointerLeave={longPress.onPointerLeave}
+      onClick={() => {
+        if (longPress.shouldSuppressClick()) return
+        onTap?.(row)
+      }}
+    >
       <span className="slipping-card__body">
         <span className="slipping-card__name">
           {row.name}
