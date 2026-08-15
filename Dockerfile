@@ -20,6 +20,10 @@ RUN npm run build
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+# Baked into the image, not compose: a host .env sets DATA_DIR relative to
+# the compose file for out-of-container runs, and that path must never leak
+# into the container. /data matches the volume mounts in both compose files.
+ENV DATA_DIR=/data
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force

@@ -34,7 +34,6 @@ services:
       # docker compose reads a top-level .env for variable substitution
       # regardless of which compose file is active.
       - LAPSE_PASSWORD=${LAPSE_PASSWORD:-lapse-dev-only-password}
-      - DATA_DIR=/data
     # Published on the host so the built image is reachable at
     # http://localhost:8080 without Traefik. 8080, not 3000: `npm run
     # dev:server` already binds :3000 on the host, so this lets the real
