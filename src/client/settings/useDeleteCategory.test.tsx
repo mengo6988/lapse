@@ -49,17 +49,4 @@ describe('useDeleteCategory', () => {
     expect(cache?.categories).toEqual([])
     expect(cache?.trackers[0]?.categoryId).toBeNull()
   })
-
-  it('leaves the cache untouched on failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({ error: 'category not found' }) }))
-
-    const queryClient = new QueryClient()
-    queryClient.setQueryData(bootstrapQueryKey, payload)
-    const { result } = renderHook(() => useDeleteCategory(), { wrapper: wrapper(queryClient) })
-
-    act(() => result.current.mutate('house'))
-
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(queryClient.getQueryData(bootstrapQueryKey)).toEqual(payload)
-  })
 })

@@ -1,13 +1,10 @@
 /**
  * PATCH /categories/:id — rename and/or recolor in one endpoint
- * (docs/spec.md § Categories), the same shape as
- * src/client/tracker/useUpdateTracker.ts.
+ * (docs/spec.md § Categories).
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { BootstrapPayload, Category } from '../api'
+import type { Category } from '../api'
 import { patchCategory } from '../query/bootstrapCache'
-import { bootstrapQueryKey } from '../query/useBootstrap'
-import { jsonRequest, mutationFetch } from '../tracker/mutationClient'
+import { useBootstrapWrite } from '../query/useBootstrapWrite'
 
 export interface UpdateCategoryInput {
   id: string
@@ -16,13 +13,10 @@ export interface UpdateCategoryInput {
 }
 
 export function useUpdateCategory() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ id, ...patch }: UpdateCategoryInput) =>
-      mutationFetch(`/api/categories/${id}`, jsonRequest('PATCH', patch)) as Promise<Category>,
-    onSuccess: (category) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? patchCategory(old, category) : old))
-    },
+  return useBootstrapWrite<UpdateCategoryInput, Category>({
+    route: (input) => `/api/categories/${input.id}`,
+    method: 'PATCH',
+    body: ({ id, ...patch }) => patch,
+    onSuccess: { kind: 'graft', graft: patchCategory },
   })
 }

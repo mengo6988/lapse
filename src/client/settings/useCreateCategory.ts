@@ -1,18 +1,12 @@
 /**
  * POST /categories (docs/spec.md § API; § Categories: "User can add"). On
- * success the new Category is appended straight to the bootstrap cache — the
- * same immediate-cache-graft idiom as src/client/tracker/useCreateTracker.ts
- * — and reuses `mutationFetch`/`jsonRequest`/`TrackerApiError` from
- * src/client/tracker/mutationClient.ts rather than a second fetch-plus-
- * field-error-parsing path, matching the precedent
- * src/client/archived/useHardDeleteTracker.ts already set for a
- * non-tracker route.
+ * success the new Category is appended straight to the bootstrap cache
+ * (src/client/query/bootstrapCache.ts) so Settings and home/list see it
+ * without a refetch.
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { BootstrapPayload, Category } from '../api'
+import type { Category } from '../api'
 import { addCategory } from '../query/bootstrapCache'
-import { bootstrapQueryKey } from '../query/useBootstrap'
-import { jsonRequest, mutationFetch } from '../tracker/mutationClient'
+import { useBootstrapWrite } from '../query/useBootstrapWrite'
 
 export interface CreateCategoryInput {
   name: string
@@ -20,13 +14,9 @@ export interface CreateCategoryInput {
 }
 
 export function useCreateCategory() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (input: CreateCategoryInput) =>
-      mutationFetch('/api/categories', jsonRequest('POST', input)) as Promise<Category>,
-    onSuccess: (category) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? addCategory(old, category) : old))
-    },
+  return useBootstrapWrite<CreateCategoryInput, Category>({
+    route: '/api/categories',
+    method: 'POST',
+    onSuccess: { kind: 'graft', graft: addCategory },
   })
 }

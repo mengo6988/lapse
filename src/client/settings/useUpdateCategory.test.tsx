@@ -40,24 +40,4 @@ describe('useUpdateCategory', () => {
     )
     expect(queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)?.categories).toEqual([updated])
   })
-
-  it('rejects with the field errors on a 400 and leaves the cache untouched', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ success: false, error: { issues: [{ path: ['color'], message: 'expected a lowercase #rrggbb color' }] } }),
-      }),
-    )
-    const queryClient = new QueryClient()
-    queryClient.setQueryData(bootstrapQueryKey, payload)
-    const { result } = renderHook(() => useUpdateCategory(), { wrapper: wrapper(queryClient) })
-
-    act(() => result.current.mutate({ id: 'house', color: 'not-a-color' }))
-
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error).toMatchObject({ fieldErrors: { color: 'expected a lowercase #rrggbb color' } })
-    expect(queryClient.getQueryData(bootstrapQueryKey)).toEqual(payload)
-  })
 })

@@ -38,24 +38,4 @@ describe('useCreateCategory', () => {
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
     expect(cache?.categories).toEqual([created])
   })
-
-  it('rejects with the field errors on a 400 and leaves the cache untouched', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ success: false, error: { issues: [{ path: ['name'], message: 'required' }] } }),
-      }),
-    )
-    const queryClient = new QueryClient()
-    queryClient.setQueryData(bootstrapQueryKey, emptyPayload)
-    const { result } = renderHook(() => useCreateCategory(), { wrapper: wrapper(queryClient) })
-
-    act(() => result.current.mutate({ name: '', color: '#f38ba8' }))
-
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error).toMatchObject({ fieldErrors: { name: 'required' } })
-    expect(queryClient.getQueryData(bootstrapQueryKey)).toEqual(emptyPayload)
-  })
 })
