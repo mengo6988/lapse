@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { issueSession, matches, requireSession } from './auth.js'
 import type { Db } from './db.js'
+import { loginRateLimit } from './rateLimit.js'
 import { bootstrapRoutes } from './routes/bootstrap.js'
 import { categoryRoutes } from './routes/categories.js'
 import { entryRoutes } from './routes/entries.js'
@@ -25,7 +26,9 @@ export function createApp({ db, password }: AppDeps) {
   // Unauthenticated: the Docker HEALTHCHECK target and the way in.
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
 
-  app.post('/api/auth/login', zValidator('json', loginSchema), (c) => {
+  // Rate limited before validation: an attempt counts whether or not the
+  // body is well-formed (ADR-0003 amendment — 10 attempts per 15 minutes).
+  app.post('/api/auth/login', loginRateLimit(), zValidator('json', loginSchema), (c) => {
     if (!matches(c.req.valid('json').password, password)) {
       return c.json({ error: 'wrong password' }, 401)
     }

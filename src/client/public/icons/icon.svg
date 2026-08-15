@@ -1,0 +1,17 @@
+<!--
+  App icon source (docs/design.md § App icon): serif lowercase "l" in the
+  wordmark text color, short lavender underline bar beneath, full-bleed on
+  the base background — no transparency, since iOS composites icons onto an
+  opaque backdrop. The glyph is authored as a path, not <text>, so rendering
+  it doesn't depend on Source Serif 4 being installed. Glyph + bar stay
+  inside the center ~66% of the canvas so this same source is safe to use
+  for both the regular and maskable icon (scripts/generate-icons.ts).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1e1e2e" />
+  <path
+    d="M241,118 L271,106 L271,330 Q271,352 296,366 L216,366 Q241,352 241,330 Z"
+    fill="#cdd6f4"
+  />
+  <rect x="216" y="392" width="80" height="14" fill="#b4befe" />
+</svg>

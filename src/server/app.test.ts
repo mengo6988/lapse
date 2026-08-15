@@ -81,3 +81,48 @@ describe('auth middleware', () => {
     expect(res.status).toBe(401)
   })
 })
+
+describe('login rate limit', () => {
+  const attemptLogin = (app: ReturnType<typeof testApp>, xForwardedFor?: string) =>
+    app.request('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(xForwardedFor ? { 'x-forwarded-for': xForwardedFor } : {}),
+      },
+      body: JSON.stringify({ password: 'wrong' }),
+    })
+
+  it('refuses the 11th attempt from the same client within the window', async () => {
+    const app = testApp()
+
+    for (let i = 0; i < 10; i++) {
+      const res = await attemptLogin(app, '9.9.9.9')
+      expect(res.status).toBe(401)
+    }
+
+    const res = await attemptLogin(app, '9.9.9.9')
+    expect(res.status).toBe(429)
+  })
+
+  it('does not rate limit a different client', async () => {
+    const app = testApp()
+
+    for (let i = 0; i < 10; i++) {
+      await attemptLogin(app, '9.9.9.9')
+    }
+    expect((await attemptLogin(app, '9.9.9.9')).status).toBe(429)
+
+    const res = await attemptLogin(app, '1.1.1.1')
+    expect(res.status).toBe(401)
+  })
+
+  it('leaves every other route unaffected', async () => {
+    const app = testApp()
+
+    for (let i = 0; i < 15; i++) {
+      const res = await app.request('/api/health', { headers: { 'x-forwarded-for': '9.9.9.9' } })
+      expect(res.status).toBe(200)
+    }
+  })
+})

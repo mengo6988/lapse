@@ -1,0 +1,155 @@
+/*
+ * home digest — docs/design.md § Home (build ticket 10). the accent bar
+ * colour is reinforced by the subline text differing per state ("Nd over"
+ * vs "due tomorrow"/"due in Nd"), so urgency is never colour-only.
+ *
+ * a few literal pixel values (58px card/tile min-height, 3px accent border)
+ * come straight from docs/design.md's own numbers rather than the spacing
+ * scale, matching how tabbar.css hardcodes the 48px FAB for the same reason.
+ */
+.home {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-9);
+}
+
+.slipping__label,
+.quick-log__label {
+  padding: 0 var(--space-8) var(--space-4);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.quick-log__label {
+  padding-top: var(--space-8);
+}
+
+.slipping__empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-8);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-md);
+  color: var(--color-text-muted);
+}
+
+.slipping__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-8);
+}
+
+.slipping-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  width: 100%;
+  min-height: 58px;
+  padding: var(--space-6) var(--space-7);
+  text-align: left;
+  background: var(--color-surface-card);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-text-inactive);
+  color: var(--color-text-primary);
+}
+
+.slipping-card--overdue {
+  border-left-color: var(--color-accent-overdue);
+}
+
+.slipping-card--due-soon {
+  border-left-color: var(--color-accent-due-soon);
+}
+
+.slipping-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.slipping-card__name {
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-md);
+}
+
+.slipping-card__variant {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.slipping-card__sub {
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.slipping-card__count {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-2xl);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.quick-log__tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding: 0 var(--space-8);
+}
+
+.quick-log-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-height: 58px;
+  padding: var(--space-5) var(--space-6);
+  text-align: left;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+}
+
+.quick-log-tile__name {
+  font-family: var(--font-serif);
+  font-size: var(--text-size-base);
+}
+
+.quick-log-tile__variant {
+  color: var(--color-text-secondary);
+}
+
+.quick-log-tile__sub {
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.all-items {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-target-min);
+  margin: var(--space-8) var(--space-8) 0;
+  padding: var(--space-6) 0;
+  border-top: 1px solid var(--color-border-hairline);
+  color: var(--color-text-deemphasis);
+}
+
+.all-items__label {
+  font-family: var(--font-serif);
+  font-size: var(--text-size-base);
+}
+
+.all-items__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}

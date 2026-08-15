@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { createApp } from './app.js'
+import { scheduleBackups } from './backupSchedule.js'
 import { openDatabase } from './db.js'
 import { parseEnv } from './env.js'
 import { seedCategories } from './seed.js'
@@ -13,6 +14,7 @@ function boot() {
   const env = parseEnv()
   const db = openDatabase(env.DATA_DIR)
   seedCategories(db)
+  scheduleBackups(db.$client, env.DATA_DIR)
 
   const app = createApp({ db, password: env.LAPSE_PASSWORD })
 

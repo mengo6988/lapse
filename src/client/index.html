@@ -6,6 +6,12 @@
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#1e1e2e" />
     <title>lapse</title>
+    <!-- iOS ignores the web manifest's display/theme_color for install
+         chrome and needs its own meta tags (docs/design.md § App icon). -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lapse" />
   </head>
   <body>
     <div id="root"></div>

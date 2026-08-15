@@ -1,0 +1,82 @@
+/* login screen — shown instead of the tabbed app while session is unauthorized. */
+.login-screen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-8);
+  background: var(--color-surface-app);
+}
+
+.login-form {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.login-form__wordmark {
+  margin: 0 0 var(--space-6);
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-2xl);
+  text-align: center;
+}
+
+.login-form__label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.login-form__input {
+  display: block;
+  width: 100%;
+  min-height: var(--touch-target-min);
+  margin-top: var(--space-3);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+  color: var(--color-text-primary);
+}
+
+.login-form__input::placeholder {
+  color: var(--color-text-inactive);
+}
+
+.login-form__error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.login-form__submit {
+  min-height: var(--touch-target-min);
+  margin-top: var(--space-5);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-base);
+  transition: transform var(--duration-press) var(--ease-standard);
+}
+
+.login-form__submit:active {
+  transform: scale(0.98);
+}
+
+.login-form__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

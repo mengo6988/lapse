@@ -1,0 +1,206 @@
+/*
+ * list tab — docs/design.md § List (frame 3b). imported directly by
+ * ListRoute.tsx (not src/client/styles/index.css) because this ticket only
+ * owns src/client/list/ and src/client/routes/ListRoute.tsx.
+ */
+
+/* ---------- category chips ---------- */
+.list-chips {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-8) var(--space-6);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.list-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.list-chip {
+  position: relative;
+  padding: 5px var(--space-5);
+  min-height: 28px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  white-space: nowrap;
+}
+
+/* invisible hit-area extension so the small pill still meets the 44px
+   minimum touch target without inflating its visual size. */
+.list-chip::before {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: max(100%, var(--touch-target-min));
+  height: var(--touch-target-min);
+  transform: translate(-50%, -50%);
+}
+
+.list-chip[aria-pressed='true'] {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+/* ---------- search row ---------- */
+.list-search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-8) var(--space-6);
+}
+
+.list-search-row__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.list-search-row__input {
+  flex: 1;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  min-height: var(--touch-target-min);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.list-search-row__input::placeholder {
+  color: var(--color-text-inactive);
+}
+
+.list-search-row__cancel {
+  position: relative;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+/* ---------- empty state ---------- */
+.list-empty {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-md);
+  color: var(--color-text-muted);
+}
+
+/* ---------- rows ---------- */
+.list-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-8);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.list-row__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.list-row__name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+.list-row__name--never {
+  font-weight: var(--font-weight-regular);
+  font-style: italic;
+  color: var(--color-text-deemphasis);
+}
+
+.list-row__name--neutral {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-deemphasis);
+}
+
+.list-row__variant {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.list-row__sub {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.list-row__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.list-row__count {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-xl);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.list-row__count--dash {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.list-row__count--neutral {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-deemphasis);
+}
+
+.list-row__bar {
+  width: 24px;
+  height: 2px;
+}
+
+.list-row__bar--overdue {
+  background: var(--color-accent-overdue);
+}
+
+.list-row__bar--due-soon {
+  background: var(--color-accent-due-soon);
+}
+
+.list-row__bar--fresh {
+  background: var(--color-accent-fresh);
+}
+
+.list-row__bar--never {
+  height: 0;
+  border-bottom: 2px dotted var(--color-border-dotted);
+}

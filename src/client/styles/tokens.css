@@ -1,0 +1,100 @@
+/*
+ * design tokens — ledger x catppuccin mocha (docs/design.md).
+ *
+ * two layers: raw palette values below, then the semantic tokens components
+ * actually consume. a future light theme redefines the semantic layer (e.g.
+ * under a `:root[data-theme="light"]` block) without touching component
+ * CSS — dark is the only theme shipped in v1.
+ */
+:root {
+  /* raw palette (catppuccin mocha subset, docs/design.md § Palette) */
+  --palette-base: #1e1e2e;
+  --palette-crust: #11111b;
+  --palette-surface0: #313244;
+  --palette-surface1: #45475a;
+  --palette-overlay0: #6c7086;
+  --palette-overlay1: #9399b2;
+  --palette-overlay2: #a6adc8;
+  --palette-subtext1: #bac2de;
+  --palette-text: #cdd6f4;
+  --palette-red: #f38ba8;
+  --palette-peach: #fab387;
+  --palette-green: #a6e3a1;
+  --palette-lavender: #b4befe;
+
+  /* semantic tokens — components consume these, never the raw palette */
+  --color-surface-app: var(--palette-base);
+  --color-surface-card: var(--palette-surface0);
+  --color-border-hairline: var(--palette-surface0);
+  --color-border-default: var(--palette-surface1);
+  --color-border-dotted: var(--palette-overlay0);
+
+  --color-text-primary: var(--palette-text);
+  --color-text-secondary: var(--palette-overlay2);
+  --color-text-muted: var(--palette-overlay1);
+  --color-text-deemphasis: var(--palette-subtext1);
+  --color-text-inactive: var(--palette-overlay0);
+  --color-text-on-accent: var(--palette-crust);
+
+  --color-accent-primary: var(--palette-lavender);
+  --color-accent-overdue: var(--palette-red);
+  --color-accent-due-soon: var(--palette-peach);
+  --color-accent-fresh: var(--palette-green);
+
+  --color-focus-ring: var(--palette-lavender);
+
+  /* type */
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', Menlo, monospace;
+
+  --text-size-xs: 0.75rem; /* 12px — frame labels, badges */
+  --text-size-sm: 0.875rem; /* 14px — sublines, meta, chips, section labels */
+  --text-size-base: 1rem; /* 16px — quick-log tile names */
+  --text-size-md: 1.0625rem; /* 17px — row/card names */
+  --text-size-lg: 1.1875rem; /* 19px — sheet name */
+  --text-size-xl: 1.375rem; /* 22px — wordmark, list row count */
+  --text-size-2xl: 1.5rem; /* 24px — home card count */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* spacing scale — named after the reference's actual measurements */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.375rem; /* 6px */
+  --space-3: 0.5rem; /* 8px */
+  --space-4: 0.625rem; /* 10px — card gap */
+  --space-5: 0.75rem; /* 12px */
+  --space-6: 0.875rem; /* 14px — card padding-y */
+  --space-7: 1rem; /* 16px — card padding-x */
+  --space-8: 1.5rem; /* 24px — screen padding */
+  --space-9: 2rem; /* 32px */
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --touch-target-min: 44px;
+  --tab-bar-height: 72px;
+
+  /* z-index scale. header/noise/tab-bar are consumed by this ticket; toast,
+     scrim and sheet are named now so later tickets (12, 13, 14) don't invent
+     their own numbers. */
+  --z-noise: 1;
+  --z-header: 2;
+  --z-tab-bar: 10;
+  --z-toast: 20;
+  --z-scrim: 30;
+  --z-sheet: 40;
+
+  --duration-press: 120ms;
+  --duration-fade: 200ms;
+  --duration-settle: 340ms;
+  --ease-standard: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --noise-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --noise-opacity: 0.045;
+}

@@ -31,4 +31,30 @@ There is no registry and no CI publish step — the VPS builds the image itself 
 
 The SQLite database (`lapse.db`) lives in the `./data` directory on the VPS host, bind-mounted into the container at `/data` (see `compose.yaml`). It persists across `docker compose up -d --build` and container restarts because it lives on the host, not in the container filesystem.
 
-Daily in-process backups to `/data/backups/lapse-YYYY-MM-DD.db` (via `VACUUM INTO`, not a raw file copy — copying a live WAL-mode database risks corruption, keeping the last 7) are **not implemented yet**: they land with build ticket 20. Until then the only copy of the data is `./data/lapse.db` on the host. Offsite backup of that directory is the host's job — back it up with whatever snapshot or backup mechanism the VPS already uses.
+The app writes a daily backup itself, in-process (`src/server/backupSchedule.ts`, scheduled from `index.ts`'s boot sequence — a plain `setInterval`, no cron dependency): once on boot and then every 24 hours, it runs `VACUUM INTO '/data/backups/lapse-YYYY-MM-DD.db'` (`src/server/backup.ts`) and prunes to the newest 7 files. `VACUUM INTO` is deliberately not a filesystem copy of `lapse.db` — the live file is WAL-mode and can be mid-write, so a raw copy risks capturing a torn, corrupt snapshot; `VACUUM INTO` asks SQLite itself for a transactionally consistent copy instead. If two boots land on the same calendar day, the second run replaces that day's file rather than erroring (SQLite's `VACUUM INTO` refuses to write to a path that already exists). A failed backup is logged to the container's stdout but never stops the server — check `docker compose logs lapse` for `backup failed:` lines if `./data/backups` looks stale.
+
+Offsite backup of `./data` (both `lapse.db` and `./data/backups`) is still the host's job — back it up with whatever snapshot or backup mechanism the VPS already uses.
+
+### Restore drill
+
+Performed locally on 2026-08-15 against the real boot path (`openDatabase` from `src/server/db.ts`, with migrations applied) rather than a synthetic table, to confirm the whole chain works, not just the `VACUUM INTO` call in isolation:
+
+1. Opened a fresh database in a temp `DATA_DIR` the same way `index.ts` does on boot (pragmas + migrations).
+2. Inserted one row each into `categories`, `trackers`, and `entries` through the real Drizzle schema.
+3. Called the real `runBackupJob(sqlite, dataDir, now)` — the same function the daily scheduler calls — which wrote `<DATA_DIR>/backups/lapse-2026-08-15.db` via `VACUUM INTO` and ran pruning.
+4. Opened *only the backup file* with a brand-new `better-sqlite3` connection (`{ readonly: true }`), never touching the live connection again, and queried `categories`, `trackers`, and `entries` back out.
+
+All three rows came back intact, including the tracker's `name` and `threshold_days`. To repeat this under pressure — say, to prove a specific dated backup on the VPS is actually restorable before you trust it:
+
+```bash
+# on the VPS, or with the file copied somewhere you can run node
+node -e "
+const Database = require('better-sqlite3');
+const db = new Database('/data/backups/lapse-2026-08-15.db', { readonly: true });
+console.log(db.prepare('SELECT COUNT(*) AS n FROM trackers').get());
+console.log(db.prepare('SELECT * FROM entries ORDER BY occurred_at DESC LIMIT 5').get());
+db.close();
+"
+```
+
+A real disaster-recovery restore (replacing a broken `lapse.db` with a backup) is: stop the container, copy the chosen `/data/backups/lapse-YYYY-MM-DD.db` over `/data/lapse.db`, then `docker compose up -d`. That specific replace-and-boot path has not been drilled end-to-end against a running container — the verification above proves the backup file itself is a valid, complete, readable database, which is the part `VACUUM INTO` is responsible for.

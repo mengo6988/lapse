@@ -1,0 +1,253 @@
+/*
+ * create/edit Tracker sheet (docs/design.md § Create/Edit Tracker) — scrim +
+ * bottom sheet with a grabber, matching the log sheet reference
+ * (.scratch/lapse-v1/assets/12-home-prototype.html). Colocated with its
+ * component rather than added to styles/index.css, which this ticket
+ * doesn't own; imported directly from TrackerSheetHost.
+ */
+.tracker-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background: rgb(0 0 0 / 0.5);
+}
+
+.tracker-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-sheet);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--color-surface-app);
+  border-top: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-3) var(--space-8) var(--space-9);
+}
+
+.tracker-sheet:focus {
+  outline: none;
+}
+
+.tracker-sheet__grabber {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-default);
+  margin: 0 auto var(--space-6);
+  touch-action: none;
+}
+
+.tracker-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.tracker-sheet__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-lg);
+}
+
+.tracker-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.tracker-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tracker-form__label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.tracker-form__input,
+.tracker-form__select {
+  min-height: var(--touch-target-min);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+  color: var(--color-text-primary);
+}
+
+.tracker-form__input--name {
+  font-family: var(--font-serif);
+  font-size: var(--text-size-lg);
+}
+
+.tracker-form__input--amount {
+  max-width: 96px;
+}
+
+.tracker-form__field-error {
+  margin: 0;
+  min-height: 1em;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.tracker-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.tracker-form__chip {
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-default);
+  background: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.tracker-form__chip--active {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+.tracker-form__custom-threshold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.tracker-form__disclosure {
+  border-top: 1px solid var(--color-border-hairline);
+  padding-top: var(--space-6);
+}
+
+.tracker-form__disclosure-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target-min);
+  width: 100%;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.tracker-form__disclosure-content {
+  margin-top: var(--space-6);
+}
+
+.tracker-form__variant-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.tracker-form__add-variant,
+.tracker-form__archive-trigger,
+.tracker-form__archive-cancel,
+.tracker-form__archive-confirm,
+.tracker-form__remove-variant {
+  min-height: var(--touch-target-min);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.tracker-form__add-variant {
+  align-self: flex-start;
+  border: 1px dashed var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.tracker-form__add-variant-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+}
+
+.tracker-form__remove-variant {
+  align-self: flex-end;
+  color: var(--color-accent-overdue);
+}
+
+.tracker-form__error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.tracker-form__submit {
+  min-height: var(--touch-target-min);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-base);
+  transition: transform var(--duration-press) var(--ease-standard);
+}
+
+.tracker-form__submit:active {
+  transform: scale(0.98);
+}
+
+.tracker-form__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tracker-form__archive {
+  border-top: 1px solid var(--color-border-hairline);
+  padding-top: var(--space-6);
+}
+
+.tracker-form__archive-trigger {
+  border: 1px solid var(--color-accent-overdue);
+  color: var(--color-accent-overdue);
+}
+
+.tracker-form__archive-copy {
+  margin: 0 0 var(--space-5);
+  font-family: var(--font-serif);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.tracker-form__archive-actions {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.tracker-form__archive-cancel {
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.tracker-form__archive-confirm {
+  border: 1px solid var(--color-accent-overdue);
+  background: var(--color-accent-overdue);
+  color: var(--color-text-on-accent);
+}

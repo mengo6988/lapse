@@ -1,0 +1,28 @@
+/*
+ * app shell frame + the full-screen noise texture (docs/design.md
+ * § Palette: fractal-noise SVG overlay at 0.045 opacity, pointer-events
+ * none). mobile-first; capped width keeps ledger rows readable at desktop.
+ */
+.app-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin-inline: auto;
+  isolation: isolate;
+}
+
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-noise);
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  background-image: var(--noise-image);
+}
+
+.app-shell__screen {
+  flex: 1;
+  padding-bottom: var(--tab-bar-height);
+}
