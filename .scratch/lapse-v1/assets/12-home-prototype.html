@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lapse — home prototype (ticket 12)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Throwaway prototype for wayfinder ticket 12 — not production code.
+   Tokens per docs/design.md (ledger × catppuccin mocha). */
+:root {
+  --base: #1e1e2e;
+  --crust: #11111b;
+  --s0: #313244;
+  --s1: #45475a;
+  --o0: #6c7086;
+  --o1: #9399b2;
+  --o2: #a6adc8;
+  --sub1: #bac2de;
+  --text: #cdd6f4;
+  --red: #f38ba8;
+  --peach: #fab387;
+  --green: #a6e3a1;
+  --lav: #b4befe;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'Menlo', monospace;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+* { box-sizing: border-box; margin: 0; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  background: #0b0b12;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 16px;
+  font-family: var(--serif);
+}
+.caption {
+  font: italic 400 14px var(--serif);
+  color: var(--o2);
+  letter-spacing: 0.03em;
+}
+.phone {
+  width: 390px;
+  height: 844px;
+  background: var(--base);
+  border: 1px solid var(--s1);
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.noise {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.045; z-index: 5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (max-width: 520px) {
+  body { padding: 0; }
+  .caption { display: none; }
+  .phone { width: 100%; height: 100dvh; border: none; border-radius: 0; }
+}
+
+/* ---------- screen ---------- */
+#screen {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 96px;
+  scrollbar-width: none;
+}
+#screen::-webkit-scrollbar { display: none; }
+#screen.refade { animation: refade 220ms var(--ease-out); }
+@keyframes refade { from { opacity: 0.55; } to { opacity: 1; } }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 24px 16px;
+}
+.wordmark { font: 600 22px var(--serif); letter-spacing: 0.01em; }
+.header-icons { display: flex; gap: 6px; color: var(--o2); }
+.icon-btn {
+  background: none; border: none; color: inherit; padding: 8px; margin: -4px;
+  cursor: pointer; border-radius: 8px; display: flex;
+}
+.section-label {
+  padding: 0 24px 10px;
+  font: italic 400 14px var(--serif);
+  color: var(--o1);
+}
+.section-label.later { padding-top: 24px; }
+
+/* slipping cards */
+.cards { display: flex; flex-direction: column; gap: 10px; padding: 0 24px; }
+.card {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  background: var(--s0); border: none; border-radius: 10px;
+  padding: 14px 16px; min-height: 58px;
+  border-left: 3px solid var(--o0);
+  color: var(--text); cursor: pointer; touch-action: pan-y;
+  font-family: var(--serif);
+}
+.card.overdue { border-left-color: var(--red); }
+.card.due-soon { border-left-color: var(--peach); }
+.card.fresh { border-left-color: var(--green); }
+.card-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.card-name { font: 600 17px var(--serif); }
+.variant { font-weight: 400; color: var(--o2); }
+.card-sub { font: 400 14px var(--mono); color: var(--o2); }
+.card-count { font: 500 24px var(--mono); font-variant-numeric: tabular-nums; }
+.empty {
+  padding: 18px 24px; font: italic 400 15px var(--serif); color: var(--o1);
+}
+
+/* quick log tiles */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 24px; }
+.tile {
+  background: transparent; border: 1px solid var(--s1); border-radius: 10px;
+  padding: 12px 14px; min-height: 58px;
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  color: var(--text); cursor: pointer; touch-action: pan-y;
+  transition: border-color 250ms var(--ease-out);
+}
+.tile.fresh-flash { border-color: var(--green); }
+.tile-name { font: 400 16px var(--serif); }
+.tile-sub { font: 400 14px var(--mono); color: var(--o2); }
+
+/* all items footer */
+.all-items {
+  display: flex; align-items: center; justify-content: space-between; width: calc(100% - 48px);
+  margin: 22px 24px 0; padding: 14px 0; border-top: 1px solid var(--s0);
+  background: none; border-left: none; border-right: none; border-bottom: none;
+  color: var(--sub1); cursor: pointer;
+}
+.all-items .label { font: 400 16px var(--serif); }
+.all-items .count { font: 400 14px var(--mono); color: var(--o2); }
+
+/* category chips */
+.chips-row {
+  display: flex; gap: 6px; padding: 2px 20px 12px;
+  font: 400 14px var(--mono);
+  overflow-x: auto; scrollbar-width: none;
+}
+.chips-row::-webkit-scrollbar { display: none; }
+.chip {
+  padding: 5px 10px; border-radius: 999px; border: 1px solid var(--s1);
+  background: none; color: var(--o2); cursor: pointer; white-space: nowrap;
+  font: 400 14px var(--mono);
+}
+.chip.on { background: var(--lav); color: var(--crust); border-color: var(--lav); }
+
+/* search */
+.search-row { display: flex; align-items: center; gap: 10px; padding: 0 24px 12px; }
+.search-row input {
+  flex: 1; background: var(--s0); border: 1px solid var(--s1); border-radius: 8px;
+  padding: 8px 12px; color: var(--text); font: 400 15px var(--mono); outline: none;
+}
+.search-row input::placeholder { color: var(--o0); }
+.search-cancel { background: none; border: none; color: var(--o2); font: 400 14px var(--mono); cursor: pointer; padding: 8px 0; }
+
+/* list rows */
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: flex; align-items: center; gap: 12px; min-height: 56px;
+  padding: 8px 24px; border: none; border-bottom: 1px solid var(--s0);
+  background: none; width: 100%; text-align: left;
+  color: var(--text); cursor: pointer; touch-action: pan-y;
+}
+.row-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.row-name { font: 600 17px var(--serif); }
+.row.never .row-name { font-weight: 400; font-style: italic; color: var(--sub1); }
+.row.neutral .row-name { font-weight: 400; color: var(--sub1); }
+.row-sub { font: 400 14px var(--mono); color: var(--o2); }
+.row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.row-count { font: 500 22px var(--mono); font-variant-numeric: tabular-nums; }
+.row.never .row-count { font-weight: 400; color: var(--o1); }
+.row.neutral .row-count { font-weight: 400; color: var(--sub1); }
+.bar { width: 24px; height: 2px; }
+.bar.overdue { background: var(--red); }
+.bar.due-soon { background: var(--peach); }
+.bar.fresh { background: var(--green); }
+.bar.never { height: 0; border-bottom: 2px dotted var(--o0); }
+
+/* press + settle */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover, .tile:hover, .row:hover { filter: brightness(1.06); }
+}
+.card:active, .tile:active, .row:active { transform: scale(0.98); }
+.card, .tile, .row { transition: transform 120ms var(--ease-out); }
+.settle { animation: settle 340ms var(--ease-spring); }
+@keyframes settle {
+  from { transform: scale(0.96); }
+  60% { transform: scale(1.012); }
+  to { transform: scale(1); }
+}
+:focus-visible { outline: 2px solid var(--lav); outline-offset: 2px; }
+
+/* stub screens */
+.stub {
+  height: 70%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.stub-title { font: 600 20px var(--serif); color: var(--sub1); }
+.stub-sub { font: italic 400 14px var(--serif); color: var(--o1); }
+
+/* ---------- tab bar ---------- */
+.tabbar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 72px; z-index: 10;
+  background: var(--base); border-top: 1px solid var(--s0);
+  display: flex; align-items: center; padding: 0 10px 6px;
+}
+.tab {
+  flex: 1; display: flex; justify-content: center; align-items: center;
+  background: none; border: none; color: var(--o0); cursor: pointer; height: 100%;
+}
+.tab.on { color: var(--text); }
+.fab {
+  width: 48px; height: 48px; border-radius: 50%; background: var(--lav); border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: transform 120ms var(--ease-out);
+}
+.fab:active { transform: scale(0.94); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: absolute; left: 50%; bottom: 88px; z-index: 20;
+  transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  background: var(--s0); border: 1px solid var(--s1); border-radius: 10px;
+  padding: 10px 14px; display: flex; align-items: center; gap: 18px;
+  font: 400 14px var(--mono); color: var(--text); white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.3);
+  transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out);
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.toast button {
+  background: none; border: none; color: var(--lav); font: 500 14px var(--mono);
+  cursor: pointer; padding: 4px; margin: -4px;
+}
+
+/* ---------- log sheet ---------- */
+.scrim {
+  position: absolute; inset: 0; z-index: 30; background: rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease-out);
+}
+.scrim.show { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 40;
+  background: var(--base); border-top: 1px solid var(--s1);
+  border-radius: 16px 16px 0 0; padding: 10px 24px 28px;
+  transform: translateY(100%); transition: transform 260ms var(--ease-sheet);
+}
+.sheet.show { transform: translateY(0); }
+.grabber { width: 36px; height: 4px; border-radius: 2px; background: var(--s1); margin: 0 auto 14px; }
+.sheet-name { font: 600 19px var(--serif); margin-bottom: 4px; }
+.sheet-label { font: italic 400 14px var(--serif); color: var(--o1); margin: 16px 0 8px; }
+.sheet-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sheet input[type="text"], .sheet input[type="datetime-local"], .sheet input[type="number"] {
+  width: 100%; background: var(--s0); border: 1px solid var(--s1); border-radius: 8px;
+  padding: 9px 12px; color: var(--text); font: 400 15px var(--mono); outline: none;
+  margin-top: 8px; color-scheme: dark;
+}
+.sheet input::placeholder { color: var(--o0); }
+.logbtn {
+  width: 100%; margin-top: 22px; padding: 13px; border: none; border-radius: 10px;
+  background: var(--lav); color: var(--crust); font: 500 16px var(--mono);
+  cursor: pointer; transition: transform 120ms var(--ease-out);
+}
+.logbtn:active { transform: scale(0.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="caption">lapse · home prototype — tap = log · hold = log sheet · undo in toast</div>
+<div class="phone">
+  <div class="noise"></div>
+  <main id="screen" aria-live="off"></main>
+  <nav class="tabbar" aria-label="tabs">
+    <button class="tab" data-tab="home" aria-label="home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"/></svg></button>
+    <button class="tab" data-tab="list" aria-label="list"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="17" x2="19" y2="17"/></svg></button>
+    <div class="tab"><button class="fab" data-act="fab" aria-label="new tracker"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#11111b" stroke-width="1.6"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg></button></div>
+    <button class="tab" data-tab="activity" aria-label="activity"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8"/><polyline points="12 7 12 12 15 14"/></svg></button>
+    <button class="tab" data-tab="settings" aria-label="settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="3" y1="8" x2="21" y2="8"/><circle cx="15" cy="8" r="2.6" fill="none"/><line x1="3" y1="16" x2="21" y2="16"/><circle cx="9" cy="16" r="2.6" fill="none"/></svg></button>
+  </nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="log sheet"></div>
+</div>
+
+<script>
+'use strict';
+// ---------- sample data (from committed direction reference) ----------
+const DATA = [
+  { id: 'hvac',    name: 'change hvac filter',     cat: 'house',    every: 60,   lastH: 74 * 24 },
+  { id: 'volvo',   name: 'tyre pressure', variant: 'volvo', cat: 'car', every: 30, lastH: 34 * 24 },
+  { id: 'crv',     name: 'tyre pressure', variant: 'crv',   cat: 'car', every: 7,  lastH: 6 * 24 },
+  { id: 'dentist', name: 'dentist checkup',        cat: 'health',   every: 180,  lastH: 120 * 24 },
+  { id: 'litter',  name: 'clean litter box',       cat: 'house',    every: 1,    lastH: 9 },
+  { id: 'plants',  name: 'water plants',           cat: 'house',    every: 3,    lastH: 24 },
+  { id: 'vacuum',  name: 'vacuum house',           cat: 'house',    every: 7,    lastH: 48 },
+  { id: 'descale', name: 'descale coffee machine', cat: 'house',    every: 90,   lastH: null },
+  { id: 'grandma', name: 'call grandma',           cat: 'personal', every: null, lastH: null },
+  { id: 'haircut', name: 'haircut',                cat: 'personal', every: null, lastH: 18 * 24 },
+];
+const QUICK = ['litter', 'plants', 'vacuum', 'crv', 'descale', 'grandma'];
+const CATS = ['all', 'house', 'car', 'health', 'personal'];
+
+// ---------- state (immutable updates; undo = snapshot restore) ----------
+let trackers = DATA;
+let tab = 'home';
+let cat = 'all';
+let search = null;           // null = closed, '' = open empty
+let freezeHome = null;       // slipping ids frozen during undo window
+let freezeList = null;       // list order frozen during undo window
+let undoSnap = null;
+let toastTimer = null;
+let justLogged = null;
+
+// ---------- domain helpers (mirror spec) ----------
+const days = t => t.lastH == null ? null : t.lastH / 24;
+const ratio = t => (t.every != null && t.lastH != null) ? days(t) / t.every : -1;
+function stateOf(t) {
+  if (t.every == null) return 'neutral';
+  if (t.lastH == null) return 'never';
+  const r = ratio(t);
+  return r >= 1 ? 'overdue' : r >= 0.8 ? 'due-soon' : 'fresh';
+}
+const fmtAge = t =>
+  t.lastH == null ? 'never'
+  : t.lastH === 0 ? 'now'
+  : t.lastH < 24 ? Math.round(t.lastH) + 'h'
+  : Math.round(t.lastH / 24) + 'd';
+function sorted(list) {
+  const th = list.filter(t => t.every != null);
+  const no = list.filter(t => t.every == null);
+  return [
+    ...th.filter(t => t.lastH == null),
+    ...th.filter(t => t.lastH != null).sort((a, b) => ratio(b) - ratio(a)),
+    ...no.filter(t => t.lastH == null),
+    ...no.filter(t => t.lastH != null).sort((a, b) => b.lastH - a.lastH),
+  ];
+}
+const slipping = list =>
+  sorted(list).filter(t => ['overdue', 'due-soon'].includes(stateOf(t))).slice(0, 3);
+function cardSub(t) {
+  const s = stateOf(t);
+  if (s === 'overdue') return `every ${t.every}d · ${Math.round(days(t) - t.every)}d over`;
+  if (s === 'due-soon') {
+    const left = Math.ceil(t.every - days(t));
+    return `every ${t.every}d · ` + (left <= 1 ? 'due tomorrow' : `due in ${left}d`);
+  }
+  return `every ${t.every}d`;
+}
+function rowSub(t) {
+  const last = t.lastH == null ? 'never' : t.lastH === 0 ? 'just now' : fmtAge(t) + ' ago';
+  return t.every == null ? `last done ${last}` : `last done ${last} · every ${t.every}d`;
+}
+const byId = id => trackers.find(t => t.id === id);
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nameHtml = t => esc(t.name) + (t.variant ? ` <span class="variant">· ${esc(t.variant)}</span>` : '');
+
+// ---------- svg bits ----------
+const SVG_SEARCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>';
+const SVG_SLIDERS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="3" y1="8" x2="21" y2="8"/><circle cx="15" cy="8" r="2.6" fill="#1e1e2e"/><line x1="3" y1="16" x2="21" y2="16"/><circle cx="9" cy="16" r="2.6" fill="#1e1e2e"/></svg>';
+
+// ---------- rendering ----------
+const $screen = document.getElementById('screen');
+function header() {
+  return `<div class="header">
+    <div class="wordmark">lapse</div>
+    <div class="header-icons">
+      <button class="icon-btn" data-act="search" aria-label="search">${SVG_SEARCH}</button>
+      <button class="icon-btn" data-act="filter" aria-label="filter">${SVG_SLIDERS}</button>
+    </div>
+  </div>`;
+}
+function cardHtml(t) {
+  const s = stateOf(t);
+  const settle = t.id === justLogged ? ' settle' : '';
+  return `<button class="card ${s}${settle}" data-log="${t.id}">
+    <span class="card-body">
+      <span class="card-name">${nameHtml(t)}</span>
+      <span class="card-sub">${cardSub(t)}</span>
+    </span>
+    <span class="card-count">${fmtAge(t)}</span>
+  </button>`;
+}
+function tileHtml(t) {
+  const flash = t.id === justLogged ? ' fresh-flash settle' : '';
+  return `<button class="tile${flash}" data-log="${t.id}">
+    <span class="tile-name">${nameHtml(t)}</span>
+    <span class="tile-sub">${t.lastH === 0 ? 'now' : t.lastH == null ? 'never' : fmtAge(t) + ' ago'}</span>
+  </button>`;
+}
+function renderHome() {
+  const slipIds = freezeHome ?? slipping(trackers).map(t => t.id);
+  const slip = slipIds.map(byId).filter(Boolean);
+  const cards = slip.length
+    ? `<div class="cards">${slip.map(cardHtml).join('')}</div>`
+    : `<div class="empty">nothing slipping</div>`;
+  return `${header()}
+    <div class="section-label">slipping</div>
+    ${cards}
+    <div class="section-label later">quick log</div>
+    <div class="tiles">${QUICK.map(byId).map(tileHtml).join('')}</div>
+    <button class="all-items" data-goto="list">
+      <span class="label">all items</span>
+      <span class="count">${trackers.length} →</span>
+    </button>`;
+}
+function rowHtml(t) {
+  const s = stateOf(t);
+  const settle = t.id === justLogged ? ' settle' : '';
+  const right = s === 'neutral'
+    ? `<span class="row-count">${fmtAge(t)}</span>`
+    : s === 'never'
+      ? `<span class="row-right"><span class="row-count">—</span><span class="bar never"></span></span>`
+      : `<span class="row-right"><span class="row-count">${fmtAge(t)}</span><span class="bar ${s}"></span></span>`;
+  const dash = (s === 'neutral' && t.lastH == null) ? '—' : null;
+  return `<button class="row ${s}${settle}" data-log="${t.id}">
+    <span class="row-body">
+      <span class="row-name">${nameHtml(t)}</span>
+      <span class="row-sub">${rowSub(t)}</span>
+    </span>
+    ${dash ? `<span class="row-count" style="color:var(--o1)">—</span>` : right}
+  </button>`;
+}
+function renderList() {
+  const order = freezeList ?? sorted(trackers).map(t => t.id);
+  let rows = order.map(byId).filter(Boolean);
+  if (cat !== 'all') rows = rows.filter(t => t.cat === cat);
+  if (search) {
+    const q = search.toLowerCase();
+    rows = rows.filter(t => (t.name + ' ' + (t.variant || '')).toLowerCase().includes(q));
+  }
+  const body = rows.length
+    ? `<div class="rows">${rows.map(rowHtml).join('')}</div>`
+    : `<div class="empty">${search ? 'no matches' : 'nothing here yet — add your first tracker'}</div>`;
+  const filterBar = search != null
+    ? `<div class="search-row">
+        <input id="searchInput" type="text" placeholder="search" value="${esc(search)}" autocomplete="off">
+        <button class="search-cancel" data-act="search-cancel">cancel</button>
+      </div>`
+    : `<div class="chips-row">${CATS.map(c =>
+        `<button class="chip${c === cat ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div>`;
+  return `${header()}${filterBar}${body}`;
+}
+const renderStub = name => `${header()}
+  <div class="stub"><div class="stub-title">${name}</div>
+  <div class="stub-sub">not designed yet — sharpens after this prototype</div></div>`;
+
+function render() {
+  $screen.innerHTML =
+    tab === 'home' ? renderHome()
+    : tab === 'list' ? renderList()
+    : renderStub(tab);
+  document.querySelectorAll('.tab[data-tab]').forEach(b =>
+    b.classList.toggle('on', b.dataset.tab === tab));
+  justLogged = null;
+  const inp = document.getElementById('searchInput');
+  if (inp && search === '') inp.focus();
+}
+
+// ---------- logging + undo ----------
+function log(id, hoursAgo = 0) {
+  // ponytail: single-level undo — snapshot before this log; a second log
+  // during the toast window makes undo revert only the latest.
+  undoSnap = trackers;
+  freezeHome = slipping(trackers).map(t => t.id);
+  freezeList = sorted(trackers).map(t => t.id);
+  trackers = trackers.map(t => t.id === id ? { ...t, lastH: hoursAgo } : t);
+  justLogged = id;
+  render();
+  showToast('logged ✓', true);
+}
+function undo() {
+  if (!undoSnap) return;
+  trackers = undoSnap;
+  undoSnap = null; freezeHome = null; freezeList = null;
+  hideToast();
+  render();
+}
+function settleAfterToast() {
+  freezeHome = null; freezeList = null; undoSnap = null;
+  $screen.classList.remove('refade');
+  void $screen.offsetWidth;
+  $screen.classList.add('refade');
+  render();
+}
+
+// ---------- toast ----------
+const $toast = document.getElementById('toast');
+function showToast(msg, withUndo) {
+  clearTimeout(toastTimer);
+  $toast.innerHTML = esc(msg) + (withUndo ? '<button id="undoBtn">undo</button>' : '');
+  $toast.classList.add('show');
+  if (withUndo) document.getElementById('undoBtn').addEventListener('click', undo);
+  toastTimer = setTimeout(() => {
+    hideToast();
+    if (withUndo) settleAfterToast();
+  }, withUndo ? 5000 : 2200);
+}
+function hideToast() { clearTimeout(toastTimer); $toast.classList.remove('show'); }
+
+// ---------- log sheet ----------
+const $sheet = document.getElementById('sheet');
+const $scrim = document.getElementById('scrim');
+let sheetFor = null, sheetHours = 0;
+function openSheet(id) {
+  const t = byId(id);
+  sheetFor = id; sheetHours = 0;
+  $sheet.innerHTML = `
+    <div class="grabber"></div>
+    <div class="sheet-name">${nameHtml(t)}</div>
+    <div class="sheet-label">when</div>
+    <div class="sheet-chips" id="timeChips">
+      <button class="chip on" data-h="0">now</button>
+      <button class="chip" data-h="1">1h ago</button>
+      <button class="chip" data-h="24">yesterday</button>
+      <button class="chip" data-h="pick">pick…</button>
+    </div>
+    <input type="datetime-local" id="pickTime" hidden>
+    <div class="sheet-label">duration</div>
+    <div class="sheet-chips" id="durChips">
+      <button class="chip" data-d="15">15m</button>
+      <button class="chip" data-d="30">30m</button>
+      <button class="chip" data-d="60">1h</button>
+      <button class="chip" data-d="custom">custom</button>
+    </div>
+    <input type="number" id="customDur" placeholder="minutes" min="1" hidden>
+    <div class="sheet-label">note</div>
+    <input type="text" id="noteInput" placeholder="optional">
+    <button class="logbtn" id="sheetLog">log</button>`;
+  $sheet.classList.add('show');
+  $scrim.classList.add('show');
+
+  const pickInput = document.getElementById('pickTime');
+  document.getElementById('timeChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    document.querySelectorAll('#timeChips .chip').forEach(c => c.classList.toggle('on', c === b));
+    if (b.dataset.h === 'pick') { pickInput.hidden = false; pickInput.focus(); }
+    else { pickInput.hidden = true; sheetHours = Number(b.dataset.h); }
+  });
+  pickInput.addEventListener('change', () => {
+    const picked = new Date(pickInput.value).getTime();
+    sheetHours = Math.max(0, (Date.now() - picked) / 3.6e6);
+  });
+  const customDur = document.getElementById('customDur');
+  document.getElementById('durChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const wasOn = b.classList.contains('on');
+    document.querySelectorAll('#durChips .chip').forEach(c => c.classList.remove('on'));
+    if (!wasOn) b.classList.add('on');
+    customDur.hidden = !(b.dataset.d === 'custom' && !wasOn);
+  });
+  document.getElementById('sheetLog').addEventListener('click', () => {
+    const target = sheetFor;
+    closeSheet();
+    log(target, sheetHours); // duration + note are form-feel only in this prototype
+  });
+}
+function closeSheet() {
+  $sheet.classList.remove('show');
+  $scrim.classList.remove('show');
+  sheetFor = null;
+}
+$scrim.addEventListener('click', closeSheet);
+// swipe-down dismiss
+let sheetY = null;
+$sheet.addEventListener('pointerdown', e => { sheetY = e.clientY; });
+$sheet.addEventListener('pointermove', e => {
+  if (sheetY != null && e.clientY - sheetY > 60) { sheetY = null; closeSheet(); }
+});
+$sheet.addEventListener('pointerup', () => { sheetY = null; });
+
+// ---------- tap vs long-press ----------
+let lpTimer = null, lpFired = false, downId = null, downY = 0;
+$screen.addEventListener('pointerdown', e => {
+  const el = e.target.closest('[data-log]');
+  if (!el) return;
+  downId = el.dataset.log; lpFired = false; downY = e.clientY;
+  lpTimer = setTimeout(() => {
+    lpFired = true;
+    if (navigator.vibrate) navigator.vibrate(10);
+    openSheet(downId);
+  }, 450);
+});
+$screen.addEventListener('pointermove', e => {
+  if (lpTimer && Math.abs(e.clientY - downY) > 10) { clearTimeout(lpTimer); lpTimer = null; }
+});
+['pointerup', 'pointercancel'].forEach(ev => $screen.addEventListener(ev, e => {
+  clearTimeout(lpTimer); lpTimer = null;
+  if (ev === 'pointerup' && !lpFired && downId) {
+    const el = e.target.closest('[data-log]');
+    if (el && el.dataset.log === downId) log(downId);
+  }
+  downId = null;
+}));
+$screen.addEventListener('contextmenu', e => {
+  if (e.target.closest('[data-log]')) e.preventDefault();
+});
+
+// ---------- nav + misc actions ----------
+document.addEventListener('click', e => {
+  const tabBtn = e.target.closest('[data-tab]');
+  if (tabBtn) { tab = tabBtn.dataset.tab; search = null; render(); return; }
+  const goto = e.target.closest('[data-goto]');
+  if (goto) { tab = goto.dataset.goto; render(); return; }
+  const chip = e.target.closest('[data-cat]');
+  if (chip) { cat = chip.dataset.cat; render(); return; }
+  const act = e.target.closest('[data-act]');
+  if (!act) return;
+  if (act.dataset.act === 'search') { tab = 'list'; search = ''; render(); }
+  if (act.dataset.act === 'search-cancel') { search = null; render(); }
+  if (act.dataset.act === 'fab') showToast('create tracker — not in this prototype', false);
+  if (act.dataset.act === 'filter') showToast('filters live in the list chips', false);
+});
+$screen.addEventListener('input', e => {
+  if (e.target.id === 'searchInput') {
+    search = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const inp = document.getElementById('searchInput');
+    inp.focus(); inp.setSelectionRange(pos, pos);
+  }
+});
+
+render();
+</script>
+</body>
+</html>

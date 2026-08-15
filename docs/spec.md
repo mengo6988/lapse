@@ -21,7 +21,7 @@ Competitive gap (researched 2026-08-14): ~7 thin solo-dev iOS "days since" apps 
 8. **Offline-lite** — app shell opens without network; log-taps queue in an outbox and replay when online (see ADR-0002).
 9. **Observed interval** — tracker detail shows "actually every ~Nd": mean gap over the last 10 Entries (per-Variant for Variant rows), shown only after ≥3 Entries.
 10. **Threshold suggestion** — on tracker detail, when ≥3 Entries exist and the observed interval deviates >30% from the Threshold: inline hint ("actually every ~40d — update threshold?") with one-tap accept. Thresholdless Trackers with ≥3 Entries get a gentler "set threshold?" hint. Never on the home list, never a notification.
-11. **Search** — magnifier icon in the home header expands to an input; client-side filter over Tracker/Variant names.
+11. **Search** — magnifier icon in the header; on home it navigates to the List tab with search open, on list it expands to an input in place (prototype ticket 12). Client-side filter over Tracker/Variant names.
 
 ## Domain rules
 
@@ -72,7 +72,7 @@ Full Entry history kept forever (enables v2 stats).
 Server is dumb CRUD; client computes ratios and sort (ADR-0001).
 
 ```
-POST   /auth/login                {password} → session cookie (skip entirely if LAPSE_PASSWORD unset)
+POST   /auth/login                {password} → session cookie (LAPSE_PASSWORD required; rate-limited 10/15min per IP — ADR-0003 amendment)
 GET    /health                    unauthenticated liveness (Docker HEALTHCHECK target)
 GET    /bootstrap                 see payload below
 POST   /trackers                  create (name, categoryId?, thresholdDays?, variants?)
@@ -99,7 +99,7 @@ CRUD   /categories
 
 **Idempotency**: `POST /entries` accepts a client-generated UUIDv7 `id`; a duplicate id returns 200 with the existing row, so outbox replays are safe. Archived Trackers accept entries (outbox may replay an entry queued before archiving); the UI hides them regardless.
 
-**Validation** (Zod via `@hono/zod-validator`, 400 with field errors): `name` trimmed 1–100 chars; `thresholdDays` int 1–3650, nullable; `durationMinutes` int 1–1440, nullable; `note` ≤ 500 chars; `occurredAt` valid ISO ≤ now + 5 min skew allowance; `color` `#rrggbb`.
+**Validation** (Zod via `@hono/zod-validator`, 400 with field errors): `name` trimmed 1–100 chars; `thresholdDays` int 1–3650, nullable; `durationMinutes` int 1–1440, nullable; `note` ≤ 500 chars; `occurredAt` valid ISO — a future value is **clamped to server-now** on ingest, not rejected (offline-lite grill: a skewed client clock must degrade to a slightly-wrong editable timestamp, never a dead-lettered log); `color` `#rrggbb`.
 
 ## Out of scope for v1
 
