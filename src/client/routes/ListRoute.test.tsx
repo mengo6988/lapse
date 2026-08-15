@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload, Category, Entry, Tracker } from '../api'
+import { session } from '../auth/session'
+import { logWindowStore } from '../log/logWindowStore'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { ListRoute } from './ListRoute'
 
@@ -115,10 +117,18 @@ function renderList(initialEntries: string[] = ['/list']) {
   )
 }
 
+/**
+ * the row's styled surface. Since build ticket 15 the `<li>` is rendered by
+ * SwipeRevealRow and only carries the swipe scaffolding; the row's own
+ * `list-row list-row--{urgency}` classes live on the sliding content inside
+ * it, which is what these assertions care about.
+ */
 function rowContaining(text: string): HTMLElement {
-  const row = screen.getAllByRole('listitem').find((item) => item.textContent?.includes(text))
-  if (!row) throw new Error(`no row found containing "${text}"`)
-  return row
+  const item = screen.getAllByRole('listitem').find((li) => li.textContent?.includes(text))
+  if (!item) throw new Error(`no row found containing "${text}"`)
+  const surface = item.querySelector('.swipe-row__content')
+  if (!surface) throw new Error(`row containing "${text}" has no content surface`)
+  return surface as HTMLElement
 }
 
 beforeEach(() => {
@@ -245,5 +255,121 @@ describe('ListRoute', () => {
 
     expect(screen.queryByRole('textbox', { name: /search/i })).toBeNull()
     expect(screen.getByRole('button', { name: 'all' })).toBeTruthy()
+  })
+})
+
+describe('ListRoute tap-to-log (build ticket 12)', () => {
+  beforeEach(() => {
+    // the file-level beforeEach above only fakes Date (userEvent's internal
+    // delays elsewhere in this file need real timers) — reinstall fully
+    // faked timers for this block instead of stacking onto that config,
+    // since every interaction here uses fireEvent, not userEvent.
+    vi.useRealTimers()
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    // unmount before resetting the store — otherwise a still-mounted
+    // instance from this test re-renders outside any act() wrapper.
+    cleanup()
+    logWindowStore.closeSilently()
+    vi.stubGlobal('fetch', undefined)
+    session.reset()
+  })
+
+  function stubPostEntry() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          id: 'server-id',
+          trackerId: 't',
+          variantId: null,
+          occurredAt: NOW.toISOString(),
+          durationMinutes: null,
+          note: null,
+          createdAt: NOW.toISOString(),
+        }),
+      }),
+    )
+  }
+
+  it('tapping a row settles it to fresh in place, with "now" and the undo toast', async () => {
+    stubPostEntry()
+    renderList()
+
+    const row = rowContaining('change hvac filter')
+    await act(async () => {
+      fireEvent.click(row.querySelector('button')!)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(row.querySelector('.log-settle')).toBeTruthy()
+    expect(row.textContent).toContain('now')
+    expect(row.className).toContain('list-row--fresh')
+
+    const toast = screen.getByRole('status')
+    expect(toast.textContent).toContain('logged ✓')
+  })
+
+  it('undo restores the exact previous state and closes the toast', async () => {
+    stubPostEntry()
+    renderList()
+
+    const row = rowContaining('change hvac filter')
+    await act(async () => {
+      fireEvent.click(row.querySelector('button')!)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'undo' }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(row.textContent).toContain('74d')
+    expect(row.className).toContain('list-row--overdue')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('row order is frozen for the undo window — the logged row does not jump position', async () => {
+    stubPostEntry()
+    renderList()
+
+    const orderBefore = screen.getAllByRole('listitem').map((li) => li.textContent ?? '')
+    const hvacIndex = orderBefore.findIndex((t) => t.includes('change hvac filter'))
+
+    const row = rowContaining('change hvac filter')
+    await act(async () => {
+      fireEvent.click(row.querySelector('button')!)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    const orderAfter = screen.getAllByRole('listitem').map((li) => li.textContent ?? '')
+    expect(orderAfter.findIndex((t) => t.includes('change hvac filter'))).toBe(hvacIndex)
+  })
+
+  it('on toast expiry, the list re-sorts and the row moves to its true (now fresh) position', async () => {
+    stubPostEntry()
+    renderList()
+
+    const row = rowContaining('change hvac filter')
+    await act(async () => {
+      fireEvent.click(row.querySelector('button')!)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(screen.queryByRole('status')).toBeNull()
+    // now fresh with the lowest ratio among thresholded/logged rows — sorts to the bottom of that bucket.
+    const order = screen.getAllByRole('listitem').map((li) => li.textContent ?? '')
+    const hvacIndex = order.findIndex((t) => t.includes('change hvac filter'))
+    const litterIndex = order.findIndex((t) => t.includes('clean litter box'))
+    expect(hvacIndex).toBeGreaterThan(litterIndex)
   })
 })

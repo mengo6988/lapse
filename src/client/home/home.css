@@ -64,6 +64,13 @@
   border-left-color: var(--color-accent-due-soon);
 }
 
+/* build ticket 12: a just-logged card stays pinned in its slipping slot for
+   the 5s undo window with its live (now-fresh) urgency state, rather than
+   snapping back to the neutral inactive-grey border. */
+.slipping-card--fresh {
+  border-left-color: var(--color-accent-fresh);
+}
+
 .slipping-card__body {
   flex: 1;
   display: flex;

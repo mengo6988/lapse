@@ -1,0 +1,201 @@
+/*
+ * archived screen (docs/design.md § Archived/Settings) — depth-2, no tab of
+ * its own, so it carries its own back affordance (docs/design.md §
+ * Navigation). Colocated with its components rather than added to
+ * src/client/styles/index.css, which this ticket doesn't own; imported
+ * directly from ArchivedRoute.tsx, matching src/client/list/list.css and
+ * src/client/tracker/trackerSheet.css's precedent.
+ */
+
+/* ---------- header ---------- */
+.archived-route__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-8) var(--space-6);
+}
+
+.archived-route__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-xl);
+}
+
+/* ---------- empty state ---------- */
+.archived-route__empty {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-size-md);
+  color: var(--color-text-muted);
+}
+
+/* ---------- rows ---------- */
+.archived-route__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archived-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.archived-row__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.archived-row__name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-size-md);
+  color: var(--color-text-deemphasis);
+}
+
+.archived-row__sub {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.archived-row__error {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.archived-row__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.archived-row__unarchive,
+.archived-row__delete {
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.archived-row__unarchive {
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.archived-row__unarchive:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.archived-row__delete {
+  border: 1px solid var(--color-accent-overdue);
+  color: var(--color-accent-overdue);
+}
+
+/* ---------- hard-delete dialog ---------- */
+.archived-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background: rgb(0 0 0 / 0.5);
+}
+
+.archived-dialog {
+  position: fixed;
+  left: var(--space-8);
+  right: var(--space-8);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: var(--z-sheet);
+  background: var(--color-surface-app);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.archived-dialog:focus {
+  outline: none;
+}
+
+.archived-dialog__status,
+.archived-dialog__copy {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-size-md);
+  color: var(--color-text-primary);
+}
+
+.archived-dialog__status--error {
+  color: var(--color-accent-overdue);
+}
+
+.archived-dialog__retry {
+  align-self: flex-start;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.archived-dialog__error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
+.archived-dialog__actions {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.archived-dialog__cancel,
+.archived-dialog__confirm {
+  flex: 1;
+  min-height: var(--touch-target-min);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-base);
+}
+
+.archived-dialog__cancel {
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.archived-dialog__confirm {
+  border: 1px solid var(--color-accent-overdue);
+  background: var(--color-accent-overdue);
+  color: var(--color-text-on-accent);
+}
+
+.archived-dialog__confirm:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

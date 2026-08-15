@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { SlippingCard } from './SlippingCard'
 import type { HomeRow } from './homeRows'
 
@@ -75,5 +75,42 @@ describe('SlippingCard', () => {
 
     const button = screen.getByRole('button')
     expect(button.getAttribute('type')).toBe('button')
+  })
+
+  it('calls onTap with the row when clicked (build ticket 12)', () => {
+    const row: HomeRow = {
+      id: 'hvac',
+      trackerId: 'hvac',
+      variantId: null,
+      name: 'change hvac filter',
+      variantLabel: null,
+      thresholdDays: 60,
+      lastEntryAt: daysAgo(74),
+    }
+    const onTap = vi.fn()
+    render(<SlippingCard row={row} now={NOW} onTap={onTap} />)
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(onTap).toHaveBeenCalledWith(row)
+  })
+
+  it('a justLogged row shows "now" and the fresh accent, even though it is still pinned in the overdue slot', () => {
+    const row: HomeRow = {
+      id: 'hvac',
+      trackerId: 'hvac',
+      variantId: null,
+      name: 'change hvac filter',
+      variantLabel: null,
+      thresholdDays: 60,
+      lastEntryAt: NOW.toISOString(), // frozen slot renders the row's *live* (post-tap) data
+    }
+
+    render(<SlippingCard row={row} now={NOW} justLogged />)
+
+    const button = screen.getByRole('button')
+    expect(button.className).toContain('slipping-card--fresh')
+    expect(button.className).toContain('log-settle')
+    expect(screen.getByText('now')).toBeTruthy()
   })
 })

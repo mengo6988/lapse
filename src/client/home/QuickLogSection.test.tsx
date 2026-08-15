@@ -27,4 +27,12 @@ describe('QuickLogSection', () => {
     expect(screen.getByText('quick log')).toBeTruthy()
     expect(screen.getAllByRole('button')).toHaveLength(2)
   })
+
+  it('forwards justLoggedId so only the matching tile renders "now"', () => {
+    render(<QuickLogSection rows={[row('a'), row('b')]} now={NOW} justLoggedId="a" />)
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[0]?.textContent).toContain('now')
+    expect(buttons[1]?.textContent).not.toContain('now')
+  })
 })

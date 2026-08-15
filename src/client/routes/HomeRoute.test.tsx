@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload } from '../api'
+import { session } from '../auth/session'
+import { logWindowStore } from '../log/logWindowStore'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { isoDaysAgo, makeEntry, makeTracker, makeVariant } from '../home/fixtures'
 import { HomeRoute } from './HomeRoute'
@@ -115,5 +117,116 @@ describe('HomeRoute', () => {
   it('never renders a search input itself — search lives on the list tab only', () => {
     renderHome({ categories: [], trackers: [] })
     expect(screen.queryByRole('textbox')).toBeNull()
+  })
+})
+
+describe('HomeRoute tap-to-log (build ticket 12)', () => {
+  const NOW = new Date(2026, 7, 15, 12, 0, 0)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    // unmount before resetting the store — otherwise a still-mounted
+    // instance from this test re-renders outside any act() wrapper.
+    cleanup()
+    logWindowStore.closeSilently()
+    vi.stubGlobal('fetch', undefined)
+    vi.useRealTimers()
+    session.reset()
+  })
+
+  function stubPostEntry() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          id: 'server-id',
+          trackerId: 't',
+          variantId: null,
+          occurredAt: NOW.toISOString(),
+          durationMinutes: null,
+          note: null,
+          createdAt: NOW.toISOString(),
+        }),
+      }),
+    )
+  }
+
+  it('tapping a slipping card settles it to fresh in place, with "now" and the undo toast', async () => {
+    const hvac = makeTracker({
+      name: 'change hvac filter',
+      thresholdDays: 60,
+      latestEntry: makeEntry({ occurredAt: isoDaysAgo(74, NOW) }),
+    })
+    stubPostEntry()
+    renderHome({ categories: [], trackers: [hvac] })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /change hvac filter/ }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    // frozen in its slipping slot, not vanished, showing live fresh data.
+    const slippingSection = screen.getByRole('region', { name: 'slipping' })
+    const card = within(slippingSection).getByRole('button')
+    expect(card.className).toContain('slipping-card--fresh')
+    expect(card.textContent).toContain('now')
+
+    const toast = screen.getByRole('status')
+    expect(toast.textContent).toContain('logged ✓')
+    expect(screen.getByRole('button', { name: 'undo' })).toBeTruthy()
+  })
+
+  it('undo restores the exact previous state and closes the toast', async () => {
+    const hvac = makeTracker({
+      name: 'change hvac filter',
+      thresholdDays: 60,
+      latestEntry: makeEntry({ occurredAt: isoDaysAgo(74, NOW) }),
+    })
+    stubPostEntry()
+    renderHome({ categories: [], trackers: [hvac] })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /change hvac filter/ }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'undo' }))
+      await Promise.resolve()
+    })
+
+    const slippingSection = screen.getByRole('region', { name: 'slipping' })
+    expect(within(slippingSection).getByText('74d')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('on toast expiry, the digest re-sorts and the row leaves the slipping section', async () => {
+    const hvac = makeTracker({
+      name: 'change hvac filter',
+      thresholdDays: 60,
+      latestEntry: makeEntry({ occurredAt: isoDaysAgo(74, NOW) }),
+    })
+    stubPostEntry()
+    renderHome({ categories: [], trackers: [hvac] })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /change hvac filter/ }))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByRole('region', { name: 'slipping' }).textContent).toContain('change hvac filter')
+
+    await act(async () => {
+      vi.advanceTimersByTime(5000)
+      await Promise.resolve()
+    })
+
+    // now fresh, no longer overdue/due-soon — the slipping section reflects the live (unfrozen) computation again.
+    expect(screen.getByText('nothing slipping')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })

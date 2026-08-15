@@ -1,0 +1,85 @@
+/*
+ * tap-to-log (docs/design.md § Motion, build ticket 12): the undo toast, the
+ * just-logged row's settle spring, and the post-expiry resort fade.
+ * Colocated here rather than styles/index.css, which this ticket doesn't
+ * own — imported directly by HomeRoute.tsx and ListRoute.tsx.
+ *
+ * prefers-reduced-motion is already collapsed globally in
+ * src/client/styles/base.css (animation-duration: 0.01ms !important on
+ * everything) — these rules lean on that rather than repeating a media
+ * query of their own, per the ticket's steer to prefer CSS for the motion.
+ */
+.log-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tab-bar-height) + var(--space-5));
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 0.2),
+    0 6px 16px rgb(0 0 0 / 0.3);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  animation: log-toast-in var(--duration-fade) var(--ease-standard);
+}
+
+@keyframes log-toast-in {
+  from {
+    transform: translateX(-50%) translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+.log-toast__undo {
+  min-height: var(--touch-target-min);
+  padding: var(--space-3);
+  margin: calc(var(--space-3) * -1);
+  color: var(--color-accent-primary);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-size-sm);
+}
+
+/* the just-logged row/card/tile eases into its fresh state in place (~340ms spring). */
+.log-settle {
+  animation: log-settle var(--duration-settle) var(--ease-spring);
+}
+
+@keyframes log-settle {
+  from {
+    transform: scale(0.96);
+  }
+  60% {
+    transform: scale(1.012);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* on toast expiry, the digest/list fade back in at their real order (~200ms). */
+.log-resort {
+  animation: log-resort var(--duration-fade) var(--ease-standard);
+}
+
+@keyframes log-resort {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}

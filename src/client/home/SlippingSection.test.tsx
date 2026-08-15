@@ -31,4 +31,12 @@ describe('SlippingSection', () => {
     expect(screen.getAllByRole('button')).toHaveLength(3)
     expect(screen.queryByText('nothing slipping')).toBeNull()
   })
+
+  it('forwards justLoggedId so only the matching card renders "now"', () => {
+    render(<SlippingSection rows={[row('a'), row('b')]} now={NOW} justLoggedId="b" />)
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[1]?.textContent).toContain('now')
+    expect(buttons[0]?.textContent).not.toContain('now')
+  })
 })

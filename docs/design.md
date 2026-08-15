@@ -102,6 +102,7 @@ Canonical strings (extend here, not ad-hoc):
 - Category filter chips at top (horizontal scroll), "All" default; search expands in-place from header magnifier.
 - Flat ledger rows: name (+ " · variant" suffix), "last done Xd ago · every Yd" subline, day-count with urgency underline bar.
 - Sorted per spec: never-logged (thresholded) → ratio desc → thresholdless group. Tap/long-press same as home; row order is frozen during the 5s undo window (row updates in place, green), re-sorts on toast expiry.
+- **Swipe left** on a row reveals a single **details** action, which opens the Tracker detail screen. This is the only way into detail: tap and long-press are both spent on logging, so browsing history gets the gesture that costs nothing on the routine path. List rows only — home cards are the routine surface and stay gesture-free.
 
 ### Log sheet (long-press)
 
@@ -145,7 +146,7 @@ Color as accent (3px card bar / 2px underline bar per row), not full-row fills �
 - **Bottom tab bar** (from committed direction): home · list · **+** (create Tracker, center FAB) · activity · settings. Activity and settings screens not visually designed yet — follow the direction tokens; activity = recent Entries feed, settings = categories manager + archived list + logout.
 - This supersedes the earlier interim decisions "FAB bottom-right" and "settings icon in header" — create lives in the center FAB, settings in the tab bar; header keeps the magnifier only (sliders icon dropped, prototype ticket 12).
 - Standalone PWA has **no OS back gesture** (iOS): every non-tab screen has an explicit back affordance; sheets dismiss by swipe-down.
-- Tabs are roots; max depth 2 (list → detail → edit sheet).
+- Tabs are roots; max depth 2 (list → detail → edit sheet). Detail is entered by swiping a list row left and tapping **details**; archived is entered from settings.
 
 ## Feel
 

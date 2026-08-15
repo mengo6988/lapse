@@ -111,12 +111,22 @@
 }
 
 .list-row {
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+/* build ticket 12: the whole row is a real <button> (accessibility — a real
+   interactive element, not a click handler on a <li>) filling the <li>'s
+   full padded area, so the entire row is the 44px+ tap target rather than
+   just its text. background/border/cursor come from the global button
+   reset in src/client/styles/base.css. */
+.list-row__button {
   display: flex;
   align-items: center;
   gap: var(--space-5);
+  width: 100%;
   min-height: 56px;
   padding: var(--space-3) var(--space-8);
-  border-bottom: 1px solid var(--color-border-hairline);
+  text-align: left;
 }
 
 .list-row__body {

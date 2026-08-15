@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { QuickLogTile } from './QuickLogTile'
 import type { HomeRow } from './homeRows'
 
@@ -34,5 +34,22 @@ describe('QuickLogTile', () => {
     const button = screen.getByRole('button')
     expect(button.textContent).toContain('tyre pressure')
     expect(button.textContent).toContain('crv')
+  })
+
+  it('calls onTap with the row when clicked (build ticket 12)', () => {
+    const onTap = vi.fn()
+    render(<QuickLogTile row={baseRow} now={NOW} onTap={onTap} />)
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(onTap).toHaveBeenCalledWith(baseRow)
+  })
+
+  it('a justLogged tile shows "now" and the settle animation class', () => {
+    const row: HomeRow = { ...baseRow, lastEntryAt: NOW.toISOString() }
+    render(<QuickLogTile row={row} now={NOW} justLogged />)
+
+    expect(screen.getByText('now')).toBeTruthy()
+    expect(screen.getByRole('button').className).toContain('log-settle')
   })
 })
