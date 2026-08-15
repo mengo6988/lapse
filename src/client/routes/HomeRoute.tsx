@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ListRow } from '../domain/trackerRows'
+import { trackerRows } from '../domain/trackerRows'
 import { AllItemsFooter } from '../home/AllItemsFooter'
-import { buildHomeRows, type HomeRow } from '../home/homeRows'
 import '../home/home.css'
 import { QuickLogSection } from '../home/QuickLogSection'
 import { selectQuickLogRows } from '../home/selectQuickLogRows'
@@ -19,7 +20,7 @@ import { useBootstrapQuery } from '../query/useBootstrap'
 // the class stays applied to let the (collapsed-or-not) animation finish.
 const RESORT_FADE_MS = 220
 
-const homeRowId = (row: HomeRow) => row.id
+const homeRowId = (row: ListRow) => row.key
 
 /**
  * home digest (docs/design.md § Home, build ticket 10 + tap-to-log ticket
@@ -45,13 +46,13 @@ export function HomeRoute() {
   const windowState = useLogWindowState()
   const resortToken = useResortToken()
 
-  const rows = buildHomeRows(data?.trackers ?? [])
+  const rows = trackerRows(data?.trackers ?? [], now, { includeArchived: false, sortByUrgency: false })
   const isFrozen = windowState.kind === 'open'
 
   const slippingRows = isFrozen
     ? applyFrozenOrder(rows, windowState.freeze.slippingIds, homeRowId)
     : selectSlippingRows(rows, now)
-  const slippingIds = new Set(slippingRows.map((row) => row.id))
+  const slippingIds = new Set(slippingRows.map((row) => row.key))
   const quickLogRows = isFrozen
     ? applyFrozenOrder(rows, windowState.freeze.quickLogIds, homeRowId)
     : selectQuickLogRows(rows, slippingIds, now)
@@ -67,7 +68,7 @@ export function HomeRoute() {
     return () => clearTimeout(timer)
   }, [resortToken])
 
-  function handleTap(row: HomeRow) {
+  function handleTap(row: ListRow) {
     logEntry({ trackerId: row.trackerId, variantId: row.variantId })
   }
 

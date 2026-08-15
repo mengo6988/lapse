@@ -1,19 +1,21 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
 import { SlippingSection } from './SlippingSection'
-import type { HomeRow } from './homeRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
 
-const row = (id: string): HomeRow => ({
-  id,
+const row = (id: string): ListRow => ({
+  key: id,
   trackerId: id,
   variantId: null,
   name: id,
-  variantLabel: null,
+  variantName: null,
+  categoryId: null,
   thresholdDays: 7,
   lastEntryAt: daysAgo(30),
+  urgency: 'overdue',
 })
 
 describe('SlippingSection', () => {

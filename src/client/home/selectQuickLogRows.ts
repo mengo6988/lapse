@@ -1,4 +1,4 @@
-import type { HomeRow } from './homeRows'
+import type { ListRow } from '../domain/trackerRows'
 
 const QUICK_LOG_LIMIT = 6
 
@@ -12,17 +12,17 @@ const QUICK_LOG_LIMIT = 6
  * unstarted Tracker can still surface as a suggestion.
  */
 export function selectQuickLogRows(
-  rows: readonly HomeRow[],
+  rows: readonly ListRow[],
   excludeIds: ReadonlySet<string>,
   now: Date,
-): HomeRow[] {
+): ListRow[] {
   return [...rows]
-    .filter((row) => !excludeIds.has(row.id))
+    .filter((row) => !excludeIds.has(row.key))
     .sort((a, b) => recencyRank(a, now) - recencyRank(b, now))
     .slice(0, QUICK_LOG_LIMIT)
 }
 
-function recencyRank(row: HomeRow, now: Date): number {
+function recencyRank(row: ListRow, now: Date): number {
   if (row.lastEntryAt === null) return Number.POSITIVE_INFINITY
   return now.getTime() - new Date(row.lastEntryAt).getTime()
 }

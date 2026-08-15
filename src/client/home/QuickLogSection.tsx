@@ -1,11 +1,11 @@
+import type { ListRow } from '../domain/trackerRows'
 import { QuickLogTile } from './QuickLogTile'
-import type { HomeRow } from './homeRows'
 
 interface QuickLogSectionProps {
-  readonly rows: readonly HomeRow[]
+  readonly rows: readonly ListRow[]
   readonly now: Date
-  readonly onTap?: (row: HomeRow) => void
-  /** build ticket 12: HomeRow.id of the row currently in its 5s undo window, if any. */
+  readonly onTap?: (row: ListRow) => void
+  /** build ticket 12: ListRow.key of the row currently in its 5s undo window, if any. */
   readonly justLoggedId?: string | null
 }
 
@@ -23,11 +23,11 @@ export function QuickLogSection({ rows, now, onTap, justLoggedId = null }: Quick
       <div className="quick-log__tiles">
         {rows.map((row) => (
           <QuickLogTile
-            key={row.id}
+            key={row.key}
             row={row}
             now={now}
             onTap={onTap}
-            justLogged={row.id === justLoggedId}
+            justLogged={row.key === justLoggedId}
           />
         ))}
       </div>

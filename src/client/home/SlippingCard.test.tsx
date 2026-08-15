@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
+import { urgencyState } from '../domain/urgency'
 import { logSheetStore } from '../log/logSheetStore'
 import { SlippingCard } from './SlippingCard'
-import type { HomeRow } from './homeRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
@@ -16,14 +17,16 @@ function firePointerEvent(target: Element, type: string, clientX: number, client
 
 describe('SlippingCard', () => {
   it('renders name, subline and big count for an overdue row', () => {
-    const row: HomeRow = {
-      id: 'hvac',
+    const row: ListRow = {
+      key: 'hvac',
       trackerId: 'hvac',
       variantId: null,
       name: 'change hvac filter',
-      variantLabel: null,
+      variantName: null,
+      categoryId: null,
       thresholdDays: 60,
       lastEntryAt: daysAgo(74),
+      urgency: urgencyState(daysAgo(74), 60, NOW),
     }
 
     render(<SlippingCard row={row} now={NOW} />)
@@ -34,14 +37,16 @@ describe('SlippingCard', () => {
   })
 
   it('carries the overdue accent class and a due-soon subline for a due-soon row', () => {
-    const row: HomeRow = {
-      id: 'crv',
+    const row: ListRow = {
+      key: 'crv',
       trackerId: 'crv',
       variantId: 'crv',
       name: 'tyre pressure',
-      variantLabel: 'crv',
+      variantName: 'crv',
+      categoryId: null,
       thresholdDays: 7,
       lastEntryAt: daysAgo(6),
+      urgency: urgencyState(daysAgo(6), 7, NOW),
     }
 
     render(<SlippingCard row={row} now={NOW} />)
@@ -51,14 +56,16 @@ describe('SlippingCard', () => {
   })
 
   it('labels a Variant row with the parent Tracker name and the Variant name', () => {
-    const row: HomeRow = {
-      id: 'volvo',
+    const row: ListRow = {
+      key: 'volvo',
       trackerId: 'tyre',
       variantId: 'volvo',
       name: 'tyre pressure',
-      variantLabel: 'volvo',
+      variantName: 'volvo',
+      categoryId: null,
       thresholdDays: 30,
       lastEntryAt: daysAgo(34),
+      urgency: urgencyState(daysAgo(34), 30, NOW),
     }
 
     render(<SlippingCard row={row} now={NOW} />)
@@ -69,14 +76,16 @@ describe('SlippingCard', () => {
   })
 
   it('is a real button, focusable and 44px+ tall, per the accessibility constraints', () => {
-    const row: HomeRow = {
-      id: 'hvac',
+    const row: ListRow = {
+      key: 'hvac',
       trackerId: 'hvac',
       variantId: null,
       name: 'change hvac filter',
-      variantLabel: null,
+      variantName: null,
+      categoryId: null,
       thresholdDays: 60,
       lastEntryAt: daysAgo(74),
+      urgency: urgencyState(daysAgo(74), 60, NOW),
     }
 
     render(<SlippingCard row={row} now={NOW} />)
@@ -86,14 +95,16 @@ describe('SlippingCard', () => {
   })
 
   it('calls onTap with the row when clicked (build ticket 12)', () => {
-    const row: HomeRow = {
-      id: 'hvac',
+    const row: ListRow = {
+      key: 'hvac',
       trackerId: 'hvac',
       variantId: null,
       name: 'change hvac filter',
-      variantLabel: null,
+      variantName: null,
+      categoryId: null,
       thresholdDays: 60,
       lastEntryAt: daysAgo(74),
+      urgency: urgencyState(daysAgo(74), 60, NOW),
     }
     const onTap = vi.fn()
     render(<SlippingCard row={row} now={NOW} onTap={onTap} />)
@@ -104,14 +115,16 @@ describe('SlippingCard', () => {
   })
 
   it('a justLogged row shows "now" and the fresh accent, even though it is still pinned in the overdue slot', () => {
-    const row: HomeRow = {
-      id: 'hvac',
+    const row: ListRow = {
+      key: 'hvac',
       trackerId: 'hvac',
       variantId: null,
       name: 'change hvac filter',
-      variantLabel: null,
+      variantName: null,
+      categoryId: null,
       thresholdDays: 60,
       lastEntryAt: NOW.toISOString(), // frozen slot renders the row's *live* (post-tap) data
+      urgency: urgencyState(NOW.toISOString(), 60, NOW),
     }
 
     render(<SlippingCard row={row} now={NOW} justLogged />)
@@ -127,14 +140,16 @@ describe('SlippingCard', () => {
 // but simpler here — no swipe wrapper, just the home digest's own scroll to
 // disambiguate against (docs/design.md's cancel-on-move rule still applies).
 describe('SlippingCard long-press (build ticket 13)', () => {
-  const row: HomeRow = {
-    id: 'hvac',
+  const row: ListRow = {
+    key: 'hvac',
     trackerId: 'hvac',
     variantId: null,
     name: 'change hvac filter',
-    variantLabel: null,
+    variantName: null,
+    categoryId: null,
     thresholdDays: 60,
     lastEntryAt: daysAgo(74),
+    urgency: urgencyState(daysAgo(74), 60, NOW),
   }
 
   beforeEach(() => {

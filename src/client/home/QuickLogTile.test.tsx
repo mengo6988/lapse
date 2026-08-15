@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
+import { urgencyState } from '../domain/urgency'
 import { logSheetStore } from '../log/logSheetStore'
 import { QuickLogTile } from './QuickLogTile'
-import type { HomeRow } from './homeRows'
 
 // jsdom has no PointerEvent constructor — see
 // src/client/detail/SwipeRevealRow.test.tsx's firePointerEvent for why a
@@ -14,14 +15,16 @@ function firePointerEvent(target: Element, type: string, clientX: number, client
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
 
-const baseRow: HomeRow = {
-  id: 'litter',
+const baseRow: ListRow = {
+  key: 'litter',
   trackerId: 'litter',
   variantId: null,
   name: 'clean litter box',
-  variantLabel: null,
+  variantName: null,
+  categoryId: null,
   thresholdDays: 1,
   lastEntryAt: null,
+  urgency: urgencyState(null, 1, NOW),
 }
 
 describe('QuickLogTile', () => {
@@ -36,7 +39,7 @@ describe('QuickLogTile', () => {
   })
 
   it('labels a Variant row with the parent Tracker name and the Variant name', () => {
-    const row: HomeRow = { ...baseRow, name: 'tyre pressure', variantLabel: 'crv', lastEntryAt: daysAgo(6) }
+    const row: ListRow = { ...baseRow, name: 'tyre pressure', variantName: 'crv', lastEntryAt: daysAgo(6) }
     render(<QuickLogTile row={row} now={NOW} />)
 
     const button = screen.getByRole('button')
@@ -54,7 +57,7 @@ describe('QuickLogTile', () => {
   })
 
   it('a justLogged tile shows "now" and the settle animation class', () => {
-    const row: HomeRow = { ...baseRow, lastEntryAt: NOW.toISOString() }
+    const row: ListRow = { ...baseRow, lastEntryAt: NOW.toISOString() }
     render(<QuickLogTile row={row} now={NOW} justLogged />)
 
     expect(screen.getByText('now')).toBeTruthy()

@@ -16,7 +16,6 @@
  */
 import type { Tracker } from '../api'
 import { trackerRows } from '../domain/trackerRows'
-import { buildHomeRows } from '../home/homeRows'
 import { selectQuickLogRows } from '../home/selectQuickLogRows'
 import { selectSlippingRows } from '../home/selectSlippingRows'
 
@@ -27,15 +26,15 @@ export interface FreezeSnapshot {
 }
 
 export function computeFreezeSnapshot(trackers: readonly Tracker[], now: Date): FreezeSnapshot {
-  const homeRows = buildHomeRows(trackers)
+  const homeRows = trackerRows(trackers, now, { includeArchived: false, sortByUrgency: false })
   const slippingRows = selectSlippingRows(homeRows, now)
-  const slippingIds = new Set(slippingRows.map((row) => row.id))
+  const slippingIds = new Set(slippingRows.map((row) => row.key))
   const quickLogRows = selectQuickLogRows(homeRows, slippingIds, now)
   const listRows = trackerRows(trackers, now, { includeArchived: false, sortByUrgency: true })
 
   return {
-    slippingIds: slippingRows.map((row) => row.id),
-    quickLogIds: quickLogRows.map((row) => row.id),
+    slippingIds: slippingRows.map((row) => row.key),
+    quickLogIds: quickLogRows.map((row) => row.key),
     listOrder: listRows.map((row) => row.key),
   }
 }

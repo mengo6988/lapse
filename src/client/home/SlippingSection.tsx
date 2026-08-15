@@ -1,11 +1,11 @@
+import type { ListRow } from '../domain/trackerRows'
 import { SlippingCard } from './SlippingCard'
-import type { HomeRow } from './homeRows'
 
 interface SlippingSectionProps {
-  readonly rows: readonly HomeRow[]
+  readonly rows: readonly ListRow[]
   readonly now: Date
-  readonly onTap?: (row: HomeRow) => void
-  /** build ticket 12: HomeRow.id of the row currently in its 5s undo window, if any. */
+  readonly onTap?: (row: ListRow) => void
+  /** build ticket 12: ListRow.key of the row currently in its 5s undo window, if any. */
   readonly justLoggedId?: string | null
 }
 
@@ -24,11 +24,11 @@ export function SlippingSection({ rows, now, onTap, justLoggedId = null }: Slipp
         <div className="slipping__cards">
           {rows.map((row) => (
             <SlippingCard
-              key={row.id}
+              key={row.key}
               row={row}
               now={now}
               onTap={onTap}
-              justLogged={row.id === justLoggedId}
+              justLogged={row.key === justLoggedId}
             />
           ))}
         </div>

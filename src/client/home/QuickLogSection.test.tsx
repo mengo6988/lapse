@@ -1,18 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
 import { QuickLogSection } from './QuickLogSection'
-import type { HomeRow } from './homeRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 
-const row = (id: string): HomeRow => ({
-  id,
+const row = (id: string): ListRow => ({
+  key: id,
   trackerId: id,
   variantId: null,
   name: id,
-  variantLabel: null,
+  variantName: null,
+  categoryId: null,
   thresholdDays: null,
   lastEntryAt: null,
+  urgency: 'neutral',
 })
 
 describe('QuickLogSection', () => {

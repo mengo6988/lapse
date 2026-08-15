@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
+import { urgencyState } from '../domain/urgency'
 import { selectSlippingRows } from './selectSlippingRows'
-import type { HomeRow } from './homeRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
 
-const row = (id: string, thresholdDays: number | null, lastEntryAt: string | null): HomeRow => ({
-  id,
+const row = (id: string, thresholdDays: number | null, lastEntryAt: string | null): ListRow => ({
+  key: id,
   trackerId: id,
   variantId: null,
   name: id,
-  variantLabel: null,
+  variantName: null,
+  categoryId: null,
   thresholdDays,
   lastEntryAt,
+  urgency: urgencyState(lastEntryAt, thresholdDays, NOW),
 })
 
 describe('selectSlippingRows', () => {
@@ -25,7 +28,7 @@ describe('selectSlippingRows', () => {
 
     const slipping = selectSlippingRows([overdue, dueSoon, fresh, neverLogged, neutral], NOW)
 
-    expect(slipping.map((r) => r.id).sort()).toEqual(['due-soon', 'overdue'])
+    expect(slipping.map((r) => r.key).sort()).toEqual(['due-soon', 'overdue'])
   })
 
   it('caps at three, most urgent first', () => {
@@ -38,7 +41,7 @@ describe('selectSlippingRows', () => {
 
     const slipping = selectSlippingRows(rows, NOW)
 
-    expect(slipping.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+    expect(slipping.map((r) => r.key)).toEqual(['a', 'b', 'c'])
   })
 
   it('is empty when nothing is due-soon or overdue', () => {

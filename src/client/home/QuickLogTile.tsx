@@ -1,14 +1,14 @@
 import { useRef } from 'react'
 import { daysAgo } from '../domain/daysAgo'
+import type { ListRow } from '../domain/trackerRows'
 import { logSheetStore } from '../log/logSheetStore'
 import { useLongPress } from '../log/useLongPress'
 import { formatAgeLabel } from './format'
-import type { HomeRow } from './homeRows'
 
 interface QuickLogTileProps {
-  readonly row: HomeRow
+  readonly row: ListRow
   readonly now: Date
-  readonly onTap?: (row: HomeRow) => void
+  readonly onTap?: (row: ListRow) => void
   /** build ticket 12: true for the 5s window after this row was tapped — shows "now" instead of the usual day-bucketed age. */
   readonly justLogged?: boolean
 }
@@ -53,8 +53,8 @@ export function QuickLogTile({ row, now, onTap, justLogged = false }: QuickLogTi
     >
       <span className="quick-log-tile__name">
         {row.name}
-        {row.variantLabel !== null && (
-          <span className="quick-log-tile__variant"> · {row.variantLabel}</span>
+        {row.variantName !== null && (
+          <span className="quick-log-tile__variant"> · {row.variantName}</span>
         )}
       </span>
       <span className="quick-log-tile__sub">{ageLabel}</span>

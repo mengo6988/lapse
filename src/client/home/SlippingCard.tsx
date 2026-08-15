@@ -1,15 +1,15 @@
 import { useRef } from 'react'
 import { daysAgo } from '../domain/daysAgo'
 import { urgencyRatio, urgencyState } from '../domain/urgency'
+import type { ListRow } from '../domain/trackerRows'
 import { logSheetStore } from '../log/logSheetStore'
 import { useLongPress } from '../log/useLongPress'
 import { formatDayCount, formatSlippingSubline } from './format'
-import type { HomeRow } from './homeRows'
 
 interface SlippingCardProps {
-  readonly row: HomeRow
+  readonly row: ListRow
   readonly now: Date
-  readonly onTap?: (row: HomeRow) => void
+  readonly onTap?: (row: ListRow) => void
   /**
    * build ticket 12: true for the 5s window after this row was tapped. The
    * card is pinned in its (frozen) slipping slot for that whole window even
@@ -70,8 +70,8 @@ export function SlippingCard({ row, now, onTap, justLogged = false }: SlippingCa
       <span className="slipping-card__body">
         <span className="slipping-card__name">
           {row.name}
-          {row.variantLabel !== null && (
-            <span className="slipping-card__variant"> · {row.variantLabel}</span>
+          {row.variantName !== null && (
+            <span className="slipping-card__variant"> · {row.variantName}</span>
           )}
         </span>
         <span className="slipping-card__sub">

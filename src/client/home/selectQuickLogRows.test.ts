@@ -1,18 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import type { ListRow } from '../domain/trackerRows'
 import { selectQuickLogRows } from './selectQuickLogRows'
-import type { HomeRow } from './homeRows'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString()
 
-const row = (id: string, lastEntryAt: string | null): HomeRow => ({
-  id,
+const row = (id: string, lastEntryAt: string | null): ListRow => ({
+  key: id,
   trackerId: id,
   variantId: null,
   name: id,
-  variantLabel: null,
+  variantName: null,
+  categoryId: null,
   thresholdDays: null,
   lastEntryAt,
+  urgency: 'neutral',
 })
 
 describe('selectQuickLogRows', () => {
@@ -22,7 +24,7 @@ describe('selectQuickLogRows', () => {
 
     const quick = selectQuickLogRows([shown, candidate], new Set(['shown']), NOW)
 
-    expect(quick.map((r) => r.id)).toEqual(['candidate'])
+    expect(quick.map((r) => r.key)).toEqual(['candidate'])
   })
 
   it('orders most-recently-logged first', () => {
@@ -31,7 +33,7 @@ describe('selectQuickLogRows', () => {
 
     const quick = selectQuickLogRows([old, recent], new Set(), NOW)
 
-    expect(quick.map((r) => r.id)).toEqual(['recent', 'old'])
+    expect(quick.map((r) => r.key)).toEqual(['recent', 'old'])
   })
 
   it('sorts never-logged rows last rather than dropping them', () => {
@@ -40,7 +42,7 @@ describe('selectQuickLogRows', () => {
 
     const quick = selectQuickLogRows([neverLogged, logged], new Set(), NOW)
 
-    expect(quick.map((r) => r.id)).toEqual(['logged', 'never'])
+    expect(quick.map((r) => r.key)).toEqual(['logged', 'never'])
   })
 
   it('caps at six candidates', () => {

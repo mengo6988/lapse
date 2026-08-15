@@ -1,6 +1,6 @@
 import { sortByUrgency } from '../domain/sort'
+import type { ListRow } from '../domain/trackerRows'
 import { urgencyState } from '../domain/urgency'
-import type { HomeRow } from './homeRows'
 
 const SLIPPING_LIMIT = 3
 
@@ -10,7 +10,7 @@ const SLIPPING_LIMIT = 3
  * the full urgency order but don't belong here — build ticket 10's "nothing
  * slipping" empty state fires only when nothing is due-soon or overdue.
  */
-export function selectSlippingRows(rows: readonly HomeRow[], now: Date): HomeRow[] {
+export function selectSlippingRows(rows: readonly ListRow[], now: Date): ListRow[] {
   return sortByUrgency(rows, now)
     .filter((row) => {
       const state = urgencyState(row.lastEntryAt, row.thresholdDays, now)
