@@ -3,11 +3,8 @@
  * Threshold override. `thresholdDays: null` means inherit the parent
  * (docs/spec.md § Domain rules).
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { BootstrapPayload } from '../api'
 import { patchVariant, type VariantMutationResponse } from '../query/bootstrapCache'
-import { bootstrapQueryKey } from '../query/useBootstrap'
-import { jsonRequest, mutationFetch } from './mutationClient'
+import { useBootstrapWrite } from '../query/useBootstrapWrite'
 
 export interface UpdateVariantInput {
   variantId: string
@@ -16,15 +13,10 @@ export interface UpdateVariantInput {
 }
 
 export function useUpdateVariant() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ variantId, ...patch }: UpdateVariantInput) =>
-      mutationFetch(`/api/variants/${variantId}`, jsonRequest('PATCH', patch)) as Promise<VariantMutationResponse>,
-    onSuccess: (response) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) =>
-        old ? patchVariant(old, response.trackerId, response) : old,
-      )
-    },
+  return useBootstrapWrite<UpdateVariantInput, VariantMutationResponse>({
+    route: (input) => `/api/variants/${input.variantId}`,
+    method: 'PATCH',
+    body: ({ variantId, ...patch }) => patch,
+    onSuccess: { kind: 'graft', graft: (payload, response) => patchVariant(payload, response.trackerId, response) },
   })
 }

@@ -4,11 +4,8 @@
  * the bootstrap cache (src/client/query/bootstrapCache.ts) so home/list
  * see it without a refetch.
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { BootstrapPayload } from '../api'
 import { addTracker, type TrackerMutationResponse } from '../query/bootstrapCache'
-import { bootstrapQueryKey } from '../query/useBootstrap'
-import { jsonRequest, mutationFetch } from './mutationClient'
+import { useBootstrapWrite } from '../query/useBootstrapWrite'
 
 export interface CreateTrackerInput {
   name: string
@@ -18,13 +15,9 @@ export interface CreateTrackerInput {
 }
 
 export function useCreateTracker() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (input: CreateTrackerInput) =>
-      mutationFetch('/api/trackers', jsonRequest('POST', input)) as Promise<TrackerMutationResponse>,
-    onSuccess: (response) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? addTracker(old, response) : old))
-    },
+  return useBootstrapWrite<CreateTrackerInput, TrackerMutationResponse>({
+    route: '/api/trackers',
+    method: 'POST',
+    onSuccess: { kind: 'graft', graft: addTracker },
   })
 }
