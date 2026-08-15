@@ -39,10 +39,13 @@ Pre-map decisions from the grilling session of 2026-08-14 (these predate the map
 - [Ops grill](issues/10-grill-ops.md) — deploy target is a **public domain** (`lapse.mengo.dev` behind existing Traefik on the Contabo VPS), not Tailscale-only; auth hardened (password required, timing-safe compare, Secure cookie, login rate limit — ADR-0003 amended); daily `VACUUM INTO` backups, prune 7; bookworm-slim multi-stage image, node HEALTHCHECK; build-on-VPS deploy via compose, no registry; no CI in v1 (explicit override); § Ops in `docs/tech-stack.md`
 - [Branding grill](issues/11-grill-branding.md) — lowercase "lapse" in-product, capitalized "Lapse" on OS surfaces (manifest/home-screen); icon = serif "l" + lavender underline bar on base, SVG source + sharp-generated PNG set; terse lowercase copy voice with canonical-strings table; § Branding in `docs/design.md`
 - [Home screen prototype](issues/12-prototype-home-screen.md) — interactive prototype in [assets/12-home-prototype.html](assets/12-home-prototype.html), accepted as-is: logged card lingers green through the 5s undo window then re-sorts on a fade; home magnifier routes to list with search open; header sliders icon dropped (magnifier only); 450ms long-press; `docs/design.md` + spec search wording updated
+- [Build handoff grill](issues/13-grill-build-handoff.md) — walking skeleton (M0, ends with first deploy to `lapse.mengo.dev`) then horizontal layers M1–M5; plan lives as checklists in [docs/build-plan.md](../../docs/build-plan.md); two first RED tests in M0 (health integration + ratio pure module); activity/settings designed in-build during M5
+
+**Destination reached (2026-08-15).** Every ticket resolved; the way is clear. Implementation starts from [docs/build-plan.md](../../docs/build-plan.md) as its own effort. This directory is a frozen archive.
 
 ## Not yet specified
 
-(empty — all fog graduated. Activity + settings layouts and the handoff shape both live in the [Build handoff grill](issues/13-grill-build-handoff.md), the last open ticket.)
+(empty — all fog graduated and resolved; no open tickets remain.)
 
 ## Out of scope
 
