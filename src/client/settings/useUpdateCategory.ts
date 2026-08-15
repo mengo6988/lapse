@@ -5,9 +5,9 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BootstrapPayload, Category } from '../api'
+import { patchCategory } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { jsonRequest, mutationFetch } from '../tracker/mutationClient'
-import { patchCategoryInCache } from './categoryCache'
 
 export interface UpdateCategoryInput {
   id: string
@@ -22,7 +22,7 @@ export function useUpdateCategory() {
     mutationFn: ({ id, ...patch }: UpdateCategoryInput) =>
       mutationFetch(`/api/categories/${id}`, jsonRequest('PATCH', patch)) as Promise<Category>,
     onSuccess: (category) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? patchCategoryInCache(old, category) : old))
+      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? patchCategory(old, category) : old))
     },
   })
 }

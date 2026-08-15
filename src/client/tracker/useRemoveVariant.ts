@@ -6,8 +6,8 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BootstrapPayload } from '../api'
+import { removeVariant } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
-import { removeVariantFromCache } from './bootstrapCache'
 import { mutationFetch } from './mutationClient'
 
 export interface RemoveVariantInput {
@@ -22,7 +22,7 @@ export function useRemoveVariant() {
     mutationFn: ({ variantId }: RemoveVariantInput) => mutationFetch(`/api/variants/${variantId}`, { method: 'DELETE' }),
     onSuccess: (_response, variables) => {
       queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) =>
-        old ? removeVariantFromCache(old, variables.trackerId, variables.variantId) : old,
+        old ? removeVariant(old, variables.trackerId, variables.variantId) : old,
       )
     },
   })

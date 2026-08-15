@@ -38,10 +38,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { uuidv7 } from 'uuidv7'
 import type { BootstrapPayload, Entry } from '../api'
+import { findLatestEntry, setLatestEntryInCache, type EntryTarget } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { computeFreezeSnapshot } from './computeFreezeSnapshot'
 import { deleteEntry, postEntry } from './entryApi'
-import { findLatestEntry, setLatestEntryInCache, type EntryTarget } from './logCache'
 import { logWindowStore } from './logWindowStore'
 
 export type LoggableRow = EntryTarget

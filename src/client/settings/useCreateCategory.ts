@@ -10,9 +10,9 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BootstrapPayload, Category } from '../api'
+import { addCategory } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { jsonRequest, mutationFetch } from '../tracker/mutationClient'
-import { addCategoryToCache } from './categoryCache'
 
 export interface CreateCategoryInput {
   name: string
@@ -26,7 +26,7 @@ export function useCreateCategory() {
     mutationFn: (input: CreateCategoryInput) =>
       mutationFetch('/api/categories', jsonRequest('POST', input)) as Promise<Category>,
     onSuccess: (category) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? addCategoryToCache(old, category) : old))
+      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? addCategory(old, category) : old))
     },
   })
 }

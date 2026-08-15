@@ -5,8 +5,8 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BootstrapPayload } from '../api'
+import { patchVariant, type VariantMutationResponse } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
-import { patchVariantInCache, type VariantMutationResponse } from './bootstrapCache'
 import { jsonRequest, mutationFetch } from './mutationClient'
 
 export interface UpdateVariantInput {
@@ -23,7 +23,7 @@ export function useUpdateVariant() {
       mutationFetch(`/api/variants/${variantId}`, jsonRequest('PATCH', patch)) as Promise<VariantMutationResponse>,
     onSuccess: (response) => {
       queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) =>
-        old ? patchVariantInCache(old, response.trackerId, response) : old,
+        old ? patchVariant(old, response.trackerId, response) : old,
       )
     },
   })

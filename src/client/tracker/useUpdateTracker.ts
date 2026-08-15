@@ -6,8 +6,8 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { BootstrapPayload } from '../api'
+import { patchTracker, type TrackerMutationResponse } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
-import { patchTrackerInCache, type TrackerMutationResponse } from './bootstrapCache'
 import { jsonRequest, mutationFetch } from './mutationClient'
 
 export interface UpdateTrackerInput {
@@ -25,7 +25,7 @@ export function useUpdateTracker() {
     mutationFn: ({ id, ...patch }: UpdateTrackerInput) =>
       mutationFetch(`/api/trackers/${id}`, jsonRequest('PATCH', patch)) as Promise<TrackerMutationResponse>,
     onSuccess: (response) => {
-      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? patchTrackerInCache(old, response) : old))
+      queryClient.setQueryData<BootstrapPayload>(bootstrapQueryKey, (old) => (old ? patchTracker(old, response) : old))
     },
   })
 }
