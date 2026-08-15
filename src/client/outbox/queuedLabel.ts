@@ -23,8 +23,7 @@
  * instead.
  */
 import type { BootstrapPayload } from '../api'
-import type { CreateEntryInput } from '../log/entryApi'
-import type { OutboxItem } from './outboxStore'
+import type { CreateEntryInput, OutboxItem } from './outboxStore'
 
 export interface QueuedItemLabel {
   /** the Tracker name (+ " · variant" suffix), or an honest fallback. */

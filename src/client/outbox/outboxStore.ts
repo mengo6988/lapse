@@ -6,8 +6,8 @@
  * Module-level `useSyncExternalStore`, matching src/client/log/
  * logWindowStore.ts and src/client/tracker/trackerSheetStore.ts. It has to
  * live outside the component tree for the same reason those do, and one more:
- * a log tap queues from src/client/log/entryApi.ts, which is a plain module
- * with no React context to reach for.
+ * a log tap queues from src/client/outbox/entryOutbox.ts, which is a plain
+ * module with no React context to reach for.
  *
  * This module owns the *queue* — what is waiting, and durably remembering it
  * across a reload. It deliberately owns no networking: the drain loop
@@ -25,9 +25,29 @@
 import { useSyncExternalStore } from 'react'
 import { del, get, set } from 'idb-keyval'
 import type { KeyValStore } from '../query/storage'
-import type { CreateEntryInput } from '../log/entryApi'
 
 export const OUTBOX_STORAGE_KEY = 'lapse-outbox'
+
+/**
+ * The shape of a queued 'create': the same fields src/client/outbox/
+ * entryOutbox.ts's `postEntry` takes, durable enough to survive a reload and
+ * be replayed later.
+ *
+ * The create schema (src/server/routes/entries.ts) treats variantId as
+ * `.optional()`, not `.nullable()` — a tracker-level log must omit the key
+ * entirely rather than send `variantId: null`. durationMinutes/note are
+ * `.nullable().optional()`, so omitting a null value is equally valid and
+ * keeps a plain tap's body exactly as small as it was before the outbox.
+ */
+export interface CreateEntryInput {
+  readonly id: string
+  readonly trackerId: string
+  readonly variantId: string | null
+  readonly occurredAt: string
+  /** the log sheet's optional duration/note. */
+  readonly durationMinutes?: number | null
+  readonly note?: string | null
+}
 
 /**
  * One queued write. `id` is the client-generated UUIDv7 Entry id for both
@@ -65,17 +85,17 @@ let writeChain: Promise<void> = Promise.resolve()
  * so persisting it would only ever leave a lie behind for the next launch to
  * read (docs/tech-stack.md § Outbox says the same about an `inflight` state).
  *
- * Two modules send: src/client/log/entryApi.ts, for a write as it happens,
- * and src/client/outbox/drainOutbox.ts, for one waiting in the queue. They
- * collide by construction — a write is recorded before it is attempted, so
- * the enqueue that makes it durable notifies the store, which wakes the drain
- * (src/client/outbox/useOutboxDrain.ts), which finds a queued item nobody has
- * sent yet and sends it. Both requests then land, and whichever settles
- * second finds the record already gone and reads that as an undo — queueing a
- * compensating delete that erases the Entry that was just created. Claiming
- * the id keeps exactly one sender per item, which is also what makes
- * `settleSentOutboxItem`'s "the record vanished, so it was undone" inference
- * safe.
+ * src/client/outbox/entryOutbox.ts sends from two code paths that can run
+ * concurrently: a live write via `postEntry`/`deleteEntry`, and a queued item
+ * a drain pass picks up. They collide by construction — a write is recorded
+ * before it is attempted, so the enqueue that makes it durable notifies the
+ * store, which wakes a drain pass (src/client/outbox/useOutboxDrain.ts
+ * subscribes here), which finds a queued item nobody has sent yet and sends
+ * it. Both requests then land, and whichever settles second finds the record
+ * already gone and reads that as an undo — queueing a compensating delete
+ * that erases the Entry that was just created. Claiming the id keeps exactly
+ * one sender per item, which is also what makes `settleSentOutboxItem`'s "the
+ * record vanished, so it was undone" inference safe.
  */
 const inFlight = new Set<string>()
 
@@ -184,10 +204,10 @@ export function removeOutboxItem(id: string): Promise<void> {
  * since the server now has what the record was holding.
  *
  * The exception is a create whose record has vanished while its request was
- * in flight. That means undo: src/client/log/entryApi.ts drops a still-queued
- * create outright rather than queueing a compensating delete, which is right
- * for a write that never left the device — but the undo window is five
- * seconds and the request may already be on the wire. The Entry the user
+ * in flight. That means undo: src/client/outbox/entryOutbox.ts drops a
+ * still-queued create outright rather than queueing a compensating delete,
+ * which is right for a write that never left the device — but the undo window
+ * is five seconds and the request may already be on the wire. The Entry the user
  * undid has just been created after all, so the delete undo skipped gets
  * queued here. Returns whether it did, so a caller mid-drain knows there was
  * no create left to remove and a new item is now waiting.

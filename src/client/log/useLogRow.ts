@@ -18,8 +18,8 @@
  *
  * Ticket 17's outbox and ticket 19's pending chip built on this exactly that
  * way, and neither changed a line below:
- *   - ticket 17 replaced `postEntry`/`deleteEntry` (src/client/log/
- *     entryApi.ts) with outbox-queueing versions; the optimistic cache write
+ *   - ticket 17 replaced `postEntry`/`deleteEntry` (now src/client/outbox/
+ *     entryOutbox.ts) with outbox-queueing versions; the optimistic cache write
  *     (src/client/log/logCache.ts) and the freeze/undo choreography here are
  *     unchanged by going offline.
  *   - ticket 19 counts outbox rows; this hook doesn't track a pending count
@@ -41,7 +41,7 @@ import type { BootstrapPayload, Entry } from '../api'
 import { findLatestEntry, setLatestEntryInCache, type EntryTarget } from '../query/bootstrapCache'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { computeFreezeSnapshot } from './computeFreezeSnapshot'
-import { deleteEntry, postEntry } from './entryApi'
+import { deleteEntry, postEntry } from '../outbox/entryOutbox'
 import { logWindowStore } from './logWindowStore'
 
 export type LoggableRow = EntryTarget

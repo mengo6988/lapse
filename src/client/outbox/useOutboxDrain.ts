@@ -5,7 +5,7 @@
  * by src/client/shell/AppShell.tsx.
  *
  * It takes no arguments, returns nothing, and renders nothing — this is
- * pure lifecycle plumbing wiring drainOutbox.ts (which owns sending one
+ * pure lifecycle plumbing wiring entryOutbox.ts (which owns sending one
  * pass) to outboxStore.ts (which owns the queue and its change
  * notifications). Nothing in either of those two modules knows this hook
  * exists, which is exactly the one-way dependency outboxStore.ts's header
@@ -26,7 +26,7 @@
  */
 import { useEffect } from 'react'
 import { backoff } from './backoff'
-import { drainOutboxOnce } from './drainOutbox'
+import { drainOutboxOnce } from './entryOutbox'
 import { loadOutbox, outboxStore } from './outboxStore'
 
 export function useOutboxDrain(): void {

@@ -1,10 +1,16 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { session } from '../auth/session'
-import type { CreateEntryInput } from '../log/entryApi'
 import type { KeyValStore } from '../query/storage'
 import { BACKOFF_BASE_MS } from './backoff'
-import { enqueueOutboxItem, outboxStore, setOutboxPersistence, OUTBOX_STORAGE_KEY, type OutboxItem } from './outboxStore'
+import {
+  enqueueOutboxItem,
+  outboxStore,
+  setOutboxPersistence,
+  OUTBOX_STORAGE_KEY,
+  type CreateEntryInput,
+  type OutboxItem,
+} from './outboxStore'
 import { useOutboxDrain } from './useOutboxDrain'
 
 function memoryStore(initial: Record<string, string> = {}): { data: Map<string, string>; store: KeyValStore } {
