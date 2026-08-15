@@ -11,7 +11,7 @@
  */
 import { z } from 'zod'
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   id: z.string(),
   trackerId: z.string(),
   variantId: z.string().nullable(),

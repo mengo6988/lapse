@@ -1,13 +1,10 @@
 /**
  * A bottom-of-list sentinel that calls `onIntersect` when it scrolls into
- * view — the infinite-scroll half of build ticket 21's cursor pagination.
- * `IntersectionObserver` isn't implemented in jsdom (see
+ * view. `IntersectionObserver` isn't implemented in jsdom (see
  * useInfiniteScrollSentinel.test.tsx), so this is written against the real
  * browser API and exercised in tests via a fake that captures the
- * constructor callback. Duplicates
- * src/client/detail/useInfiniteScrollSentinel.ts byte-for-byte in behavior
- * — not exported from src/client/detail/index.ts, and this ticket's file
- * fence can't reach that directory to add the export.
+ * constructor callback. Shared by the Activity feed and the Tracker detail
+ * history — both screens load their next page the same way, on scroll.
  */
 import { useEffect, useRef } from 'react'
 

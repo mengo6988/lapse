@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useInfiniteScrollSentinel } from './useInfiniteScrollSentinel'
 
 /**
- * jsdom has no IntersectionObserver at all — mirrors
- * src/client/detail/useInfiniteScrollSentinel.test.tsx's fake, which
- * captures the constructor callback so a test can fire it manually,
- * standing in for the browser actually scrolling the sentinel into view.
+ * jsdom has no IntersectionObserver at all — the real implementation is
+ * exercised via this fake, which captures the callback each instance was
+ * constructed with so a test can fire it manually, standing in for the
+ * browser actually scrolling the sentinel into view.
  */
 class FakeIntersectionObserver {
   static instances: FakeIntersectionObserver[] = []

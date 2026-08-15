@@ -2,13 +2,13 @@
  * The flat, newest-first, cursor-paginated Entry history (docs/spec.md §
  * Features 5: "tracker detail screen lists all Entries; each editable ...
  * and deletable"). Loads the next page when the bottom sentinel scrolls
- * into view — see useInfiniteScrollSentinel.ts for why that's built
- * against a fake IntersectionObserver rather than jsdom's (nonexistent)
- * real one.
+ * into view — see shell/useInfiniteScrollSentinel.test.tsx for why that's
+ * built against a fake IntersectionObserver rather than jsdom's
+ * (nonexistent) real one.
  */
 import type { Entry, Tracker } from '../api'
+import { useInfiniteScrollSentinel } from '../shell/useInfiniteScrollSentinel'
 import { EntryRow } from './EntryRow'
-import { useInfiniteScrollSentinel } from './useInfiniteScrollSentinel'
 import { useTrackerEntries } from './useTrackerEntries'
 
 export interface EntryHistoryListProps {

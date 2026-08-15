@@ -23,8 +23,8 @@ import '../activity/activity.css'
 import { ActivityDaySection } from '../activity/ActivityDaySection'
 import { groupActivityRowsByDay } from '../activity/dayBuckets'
 import { useActivityEntries } from '../activity/useActivityEntries'
-import { useInfiniteScrollSentinel } from '../activity/useInfiniteScrollSentinel'
 import { useBootstrapQuery } from '../query/useBootstrap'
+import { useInfiniteScrollSentinel } from '../shell/useInfiniteScrollSentinel'
 
 const EMPTY_MESSAGE = 'nothing logged yet'
 const ERROR_MESSAGE = "couldn't load activity — try again"
