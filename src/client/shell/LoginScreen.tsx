@@ -5,7 +5,10 @@ type LoginError = 'wrong-password' | 'unknown'
 
 const ERROR_COPY: Record<LoginError, string> = {
   'wrong-password': 'wrong password',
-  unknown: 'could not log in',
+  // "couldn't" per docs/design.md § Copy tone — matches the contraction
+  // used by every other client-authored failure message (e.g.
+  // src/client/tracker/mutationClient.ts's "couldn't save — try again").
+  unknown: "couldn't log in",
 }
 
 /**

@@ -59,6 +59,37 @@ const listeners = new Set<() => void>()
 /** serialises writes so two overlapping mutations can't persist out of order. */
 let writeChain: Promise<void> = Promise.resolve()
 
+/**
+ * Ids with a request in the air right now. Deliberately in memory only, and
+ * deliberately not an item `status`: it describes a live promise in this tab,
+ * so persisting it would only ever leave a lie behind for the next launch to
+ * read (docs/tech-stack.md § Outbox says the same about an `inflight` state).
+ *
+ * Two modules send: src/client/log/entryApi.ts, for a write as it happens,
+ * and src/client/outbox/drainOutbox.ts, for one waiting in the queue. They
+ * collide by construction — a write is recorded before it is attempted, so
+ * the enqueue that makes it durable notifies the store, which wakes the drain
+ * (src/client/outbox/useOutboxDrain.ts), which finds a queued item nobody has
+ * sent yet and sends it. Both requests then land, and whichever settles
+ * second finds the record already gone and reads that as an undo — queueing a
+ * compensating delete that erases the Entry that was just created. Claiming
+ * the id keeps exactly one sender per item, which is also what makes
+ * `settleSentOutboxItem`'s "the record vanished, so it was undone" inference
+ * safe.
+ */
+const inFlight = new Set<string>()
+
+/** takes the send-claim on an id, or reports that someone else already holds it. */
+export function claimOutboxItem(id: string): boolean {
+  if (inFlight.has(id)) return false
+  inFlight.add(id)
+  return true
+}
+
+export function releaseOutboxItem(id: string): void {
+  inFlight.delete(id)
+}
+
 function emit() {
   for (const listener of listeners) listener()
 }

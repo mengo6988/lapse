@@ -74,7 +74,7 @@ Server is dumb CRUD; client computes ratios and sort (ADR-0001).
 ```
 POST   /auth/login                {password} → session cookie (LAPSE_PASSWORD required; rate-limited 10/15min per IP — ADR-0003 amendment)
 POST   /auth/logout               clears the session cookie → 200 {ok:true}; unauthenticated, so it always succeeds even against a missing or stale cookie
-GET    /health                    unauthenticated liveness (Docker HEALTHCHECK target)
+GET    /api/health                unauthenticated liveness (Docker HEALTHCHECK target)
 GET    /bootstrap                 see payload below
 POST   /trackers                  create (name, categoryId?, thresholdDays?, variants?)
 PATCH  /trackers/:id              edit / archive (archivedAt) / unarchive

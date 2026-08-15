@@ -16,8 +16,10 @@
  */
 import { ApiError, apiFetch, jsonRequest } from '../api/client'
 import {
+  claimOutboxItem,
   enqueueOutboxItem,
   outboxStore,
+  releaseOutboxItem,
   removeOutboxItem,
   settleSentOutboxItem,
   updateOutboxItem,
@@ -76,6 +78,12 @@ export function buildCreateEntryBody(input: CreateEntryInput): Record<string, un
  * (build ticket 19) for a manual retry instead.
  */
 async function sendQueued(item: OutboxItem, path: string, init: RequestInit): Promise<void> {
+  // Claimed *before* the enqueue, not after: the enqueue notifies the store
+  // synchronously, which wakes the drain, which would otherwise pick this
+  // brand-new item up and send it in parallel with the send below. The claim
+  // has to already be held by the time that happens. See `claimOutboxItem`
+  // in src/client/outbox/outboxStore.ts for what the two racing sends did.
+  claimOutboxItem(item.id)
   await enqueueOutboxItem(item)
 
   try {
@@ -93,6 +101,11 @@ async function sendQueued(item: OutboxItem, path: string, init: RequestInit): Pr
       await updateOutboxItem(item.id, { status: 'dead' })
     }
     return
+  } finally {
+    // released before settling, so the drain woken by the settle's own store
+    // change is free to pick up whatever that leaves behind — a dead-lettered
+    // item, or the compensating delete an undo mid-flight needs sent.
+    releaseOutboxItem(item.id)
   }
 
   await settleSentOutboxItem(item)

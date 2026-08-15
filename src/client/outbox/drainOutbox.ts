@@ -18,7 +18,14 @@
  */
 import { ApiError, apiFetch, jsonRequest } from '../api/client'
 import { buildCreateEntryBody } from '../log/entryApi'
-import { outboxStore, settleSentOutboxItem, updateOutboxItem, type OutboxItem } from './outboxStore'
+import {
+  claimOutboxItem,
+  outboxStore,
+  releaseOutboxItem,
+  settleSentOutboxItem,
+  updateOutboxItem,
+  type OutboxItem,
+} from './outboxStore'
 
 export interface DrainResult {
   /**
@@ -99,6 +106,11 @@ async function runPass(): Promise<DrainResult> {
 
     if (item.status === 'dead') continue
 
+    // src/client/log/entryApi.ts sends a write as it happens and records it
+    // first, so a pass woken by that record finds an item already on the wire.
+    // Leave it to its owner rather than sending it twice.
+    if (!claimOutboxItem(item.id)) continue
+
     try {
       await send(item)
       if (await settleSentOutboxItem(item)) {
@@ -123,6 +135,8 @@ async function runPass(): Promise<DrainResult> {
       const attempts = item.attempts + 1
       await updateOutboxItem(item.id, { attempts })
       return { retryAfterAttempts: attempts }
+    } finally {
+      releaseOutboxItem(item.id)
     }
   }
 }

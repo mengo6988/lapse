@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { session } from '../auth/session'
 import { outboxStore, setOutboxPersistence, type OutboxItem } from '../outbox/outboxStore'
 import type { KeyValStore } from '../query/storage'
+import { drainOutboxOnce } from '../outbox/drainOutbox'
 import { deleteEntry, postEntry } from './entryApi'
 
 function memoryStore(): KeyValStore {
@@ -45,6 +46,29 @@ afterEach(() => {
 })
 
 describe('postEntry', () => {
+  it('is not raced by the drain the enqueue itself wakes: one POST, and no compensating delete', async () => {
+    // useOutboxDrain subscribes to the store and drains on every change, so
+    // the enqueue that makes the write durable also wakes a drain — which,
+    // left alone, sends the same item a second time. Both sends then settle,
+    // the second finds the record already gone, reads that as an undo, and
+    // queues a compensating DELETE that erases the Entry that was just
+    // created (found by the ticket 23 Playwright smoke).
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+    const unsubscribe = outboxStore.subscribe(() => {
+      void drainOutboxOnce()
+    })
+
+    await postEntry({ id: 'raced-1', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' })
+    // let any drain the settle woke run to completion.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    unsubscribe()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/entries')
+    expect(outboxStore.read()).toEqual([])
+  })
+
   it('records the write in the outbox before the request goes out, so a kill mid-request loses nothing', async () => {
     let releaseRequest!: (value: unknown) => void
     const inFlight = new Promise((resolve) => {

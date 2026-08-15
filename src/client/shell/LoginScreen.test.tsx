@@ -44,7 +44,7 @@ describe('LoginScreen', () => {
     expect(session.read()).not.toBe('authed')
   })
 
-  it('shows "could not log in" on a non-401 failure response', async () => {
+  it("shows \"couldn't log in\" on a non-401 failure response", async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
     const user = userEvent.setup()
     render(<LoginScreen />)
@@ -52,10 +52,10 @@ describe('LoginScreen', () => {
     await user.type(screen.getByLabelText('password'), 'anything')
     await user.click(screen.getByRole('button', { name: 'log in' }))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('could not log in')
+    expect((await screen.findByRole('alert')).textContent).toBe("couldn't log in")
   })
 
-  it('shows "could not log in" when the request itself throws', async () => {
+  it("shows \"couldn't log in\" when the request itself throws", async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     const user = userEvent.setup()
     render(<LoginScreen />)
@@ -63,6 +63,6 @@ describe('LoginScreen', () => {
     await user.type(screen.getByLabelText('password'), 'anything')
     await user.click(screen.getByRole('button', { name: 'log in' }))
 
-    expect((await screen.findByRole('alert')).textContent).toBe('could not log in')
+    expect((await screen.findByRole('alert')).textContent).toBe("couldn't log in")
   })
 })

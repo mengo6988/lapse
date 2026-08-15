@@ -1,0 +1,49 @@
+# Its own project name (Compose otherwise falls back to the directory name,
+# "lapse", same as compose.yaml) so container and volume names never collide
+# with a production stack running from the same checkout, and so
+# `docker compose ps` / `docker ps` make it obvious at a glance which stack
+# is which.
+name: lapse-dev
+
+services:
+  lapse:
+    build: .
+    # No restart policy (defaults to "no"), unlike production's
+    # unless-stopped: a crashed local test run should stay stopped and
+    # visible on the terminal, not silently relaunch itself.
+    volumes:
+      # A named volume rather than the host bind mount production uses, which
+      # buys two things. It can never be mistaken for the real ./data. And it
+      # sidesteps the EACCES-on-boot problem docs/deploy.md walks the operator
+      # through: a bind mount's ownership comes from the host, so it needs a
+      # `chown 1000:1000` before the non-root `node` user in the container can
+      # write lapse.db — and the right incantation differs across Docker
+      # Desktop, Colima and native Linux. Docker seeds a *fresh named volume*
+      # from the image instead, and the Dockerfile already chowns /data to
+      # node, so this just works with no pre-run setup on any host.
+      #
+      # The cost is that the database isn't sitting in the working tree where
+      # you can open it directly. `docker compose -f compose.dev.yaml exec
+      # lapse sh` gets you to it, and `... down -v` throws it away for a clean
+      # start — which for throwaway local test data is usually what you want.
+      - lapse-dev-data:/data
+    environment:
+      # Falls back to an obvious, unmistakable throwaway so this file runs
+      # start-to-finish with nothing but `up --build` — no .env required.
+      # Export LAPSE_PASSWORD yourself, or add a .env, to use something else;
+      # docker compose reads a top-level .env for variable substitution
+      # regardless of which compose file is active.
+      - LAPSE_PASSWORD=${LAPSE_PASSWORD:-lapse-dev-only-password}
+      - DATA_DIR=/data
+    # Published on the host so the built image is reachable at
+    # http://localhost:8080 without Traefik. 8080, not 3000: `npm run
+    # dev:server` already binds :3000 on the host, so this lets the real
+    # container and the plain-Node dev server run side by side without a
+    # port collision. The container still listens on 3000 internally (PORT's
+    # default — see .env.example); only the host-side mapping differs from
+    # production, which publishes nothing at all.
+    ports:
+      - '8080:3000'
+
+volumes:
+  lapse-dev-data:

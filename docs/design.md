@@ -74,7 +74,12 @@ Canonical strings (extend here, not ad-hoc):
 | Activity, empty | `nothing logged yet` |
 | Activity, load failed | `couldn't load activity — try again` |
 | Search, no hits | `no matches` |
-| Login failure | `wrong password` |
+| Archived, empty | `nothing archived` |
+| Detail, history load failed | `couldn't load history — try again` |
+| Any save that failed unattributably | `couldn't save — try again` |
+| Hard-delete dialog, entry count unavailable | `couldn't check entry count — try again` |
+| Deep link to a Tracker that is gone | `tracker not found` (mirrors the server's own 404) |
+| Login failure | `wrong password` · `couldn't log in` (anything that isn't a wrong password) |
 | Pending chip | `2 queued` (count + clock glyph) |
 | Queued sheet title | `queued` |
 | Queued sheet actions | `retry all` · `discard` |
@@ -82,7 +87,12 @@ Canonical strings (extend here, not ad-hoc):
 | Queued entry whose Tracker is gone | `unknown tracker` · `<tracker> · unknown variant` |
 | Queued undo (no Tracker to name) | `removing an entry` |
 
-Two strings the offline-lite grill specified are deliberately **not** in the table above. `couldn't save — retrying` and `couldn't undo — offline` were written for a client that surfaced a failed write as a toast; since build ticket 17 a failed write queues silently and the pending chip is the only surface for it, so neither string has a trigger left. (Both constants still exist in `src/client/log/useLogRow.ts` for the one failure the outbox refuses to swallow — a 401 — but the login screen replaces the whole shell at that point, so nothing renders them. Retiring that machinery is a cleanup, not a v1 blocker.)
+Three strings are deliberately **not** in the table above, all of them casualties of build ticket 17's outbox:
+
+- `couldn't save — retrying`, from the offline-lite grill, was written for a client that surfaced a queued write as a toast. It was never implemented, and the pending chip is now the only surface for a write that hasn't landed, so it has no trigger to be implemented for.
+- `couldn't log — try again` and `couldn't undo — offline` (`LOG_FAILURE_MESSAGE` / `UNDO_FAILURE_MESSAGE` in `src/client/log/useLogRow.ts`) were real, and fired whenever a log or an undo failed. Since ticket 17 the only failure that reaches them is a 401, and the login screen replaces the whole shell at that point, so nothing renders them. The constants are still there; retiring that machinery is a cleanup, not a v1 blocker.
+
+The one live "couldn't" string the copy audit did not retire is `couldn't save — try again`, which has its own row above — it belongs to Tracker/Category/Variant mutations, which do not go through the outbox and still fail fast.
 
 ## Design principles
 

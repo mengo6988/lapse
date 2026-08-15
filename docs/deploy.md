@@ -1,6 +1,6 @@
 # Deploy
 
-Operator runbook for running lapse on the Contabo VPS behind the existing Traefik v3 instance. See `docs/tech-stack.md` § Ops for the design decisions behind this.
+Operator runbook for running lapse on the Contabo VPS behind the existing Traefik v3 instance, via `compose.yaml`. See `docs/tech-stack.md` § Ops for the design decisions behind this. To run the same image locally, without a VPS, a domain, or Traefik — for testing the real container before it ships — see `compose.dev.yaml` and the README instead; none of what follows applies to that path.
 
 ## One-time setup
 
