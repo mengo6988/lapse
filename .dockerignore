@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+data
+.git
+.scratch
+*.db
+*.db-wal
+*.db-shm
+.env

@@ -1,0 +1,26 @@
+/* Walking-skeleton styling only — the committed token set lands in ticket 09. */
+:root {
+  color-scheme: dark;
+  --base: #1e1e2e;
+  --text: #cdd6f4;
+  --lavender: #b4befe;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--base);
+  color: var(--text);
+  font-family: ui-serif, Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  color: var(--lavender);
+}
+
+input,
+button {
+  font: inherit;
+  min-height: 44px;
+}

@@ -1,0 +1,23 @@
+services:
+  lapse:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      - LAPSE_PASSWORD=${LAPSE_PASSWORD}
+      - DATA_DIR=/data
+    # No published ports: Traefik reaches the container over the shared
+    # traefik network. exposedbydefault=false on that Traefik, so the
+    # traefik.enable label below is required.
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lapse.rule=Host(`lapse.mengo.dev`)
+      - traefik.http.routers.lapse.entrypoints=websecure
+      - traefik.http.routers.lapse.tls.certresolver=myresolver
+      - traefik.http.services.lapse.loadbalancer.server.port=3000
+
+networks:
+  traefik:
+    external: true
