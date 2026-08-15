@@ -16,6 +16,12 @@
  *  - `invalidate`: mark a query stale so it refetches, for a write where the
  *    response isn't enough to update the cache by hand.
  *
+ * A write may additionally touch a query that isn't the bootstrap payload —
+ * `alsoUpdate` names that query and how the write changes it. Only the
+ * paginated entry history needs this today: editing or deleting an Entry
+ * updates the already-loaded pages in place (so a deep scroll survives) while
+ * marking bootstrap stale, because `latestEntry` is server-authoritative.
+ *
  * Error handling is untouched: `mutationFetch`
  * (src/client/tracker/mutationClient.ts) already turns a rejected write into
  * per-field messages or the single "couldn't save" failure; this hook does
@@ -42,12 +48,19 @@ export type WriteSuccess<TInput, TResponse> =
       readonly queryKey: QueryKey
     }
 
-export interface WriteSpec<TInput, TResponse> {
+/** a query outside the bootstrap payload that this write also changes, updated in place rather than refetched. */
+export interface WriteAlsoUpdate<TInput, TResponse, TData> {
+  readonly queryKey: (input: TInput) => QueryKey
+  readonly update: (old: TData | undefined, response: TResponse, input: TInput) => TData | undefined
+}
+
+export interface WriteSpec<TInput, TResponse, TData = unknown> {
   readonly route: WriteRoute<TInput>
   readonly method: WriteMethod
   /** the JSON request body, derived from the input. Omit for a write with no body (a DELETE with nothing to say) or one that sends its input as-is. */
   readonly body?: (input: TInput) => unknown
   readonly onSuccess: WriteSuccess<TInput, TResponse>
+  readonly alsoUpdate?: WriteAlsoUpdate<TInput, TResponse, TData>
 }
 
 function resolveRoute<TInput>(route: WriteRoute<TInput>, input: TInput): string {
@@ -60,13 +73,18 @@ function buildInit<TInput>(method: WriteMethod, input: TInput, body?: (input: TI
   return jsonRequest(method, input)
 }
 
-export function useBootstrapWrite<TInput, TResponse>(spec: WriteSpec<TInput, TResponse>) {
+export function useBootstrapWrite<TInput, TResponse, TData = unknown>(spec: WriteSpec<TInput, TResponse, TData>) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: TInput) =>
       mutationFetch(resolveRoute(spec.route, input), buildInit(spec.method, input, spec.body)) as Promise<TResponse>,
     onSuccess: (response, input) => {
+      if (spec.alsoUpdate) {
+        const { queryKey, update } = spec.alsoUpdate
+        queryClient.setQueryData<TData>(queryKey(input), (old) => update(old, response, input))
+      }
+
       if (spec.onSuccess.kind === 'invalidate') {
         void queryClient.invalidateQueries({ queryKey: spec.onSuccess.queryKey })
         return
