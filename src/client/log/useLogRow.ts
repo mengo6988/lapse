@@ -16,17 +16,24 @@
  * Everything from `applyEntry` down (freeze, optimistic write, POST, undo)
  * was already entry-shape-agnostic, so widening it here didn't touch that.
  *
- * Ticket 17's outbox and ticket 19's pending chip build on this the same way:
- *   - ticket 17 replaces `postEntry`/`deleteEntry` (src/client/log/
+ * Ticket 17's outbox and ticket 19's pending chip built on this exactly that
+ * way, and neither changed a line below:
+ *   - ticket 17 replaced `postEntry`/`deleteEntry` (src/client/log/
  *     entryApi.ts) with outbox-queueing versions; the optimistic cache write
  *     (src/client/log/logCache.ts) and the freeze/undo choreography here are
  *     unchanged by going offline.
  *   - ticket 19 counts outbox rows; this hook doesn't track a pending count
  *     itself, only the single most recent undoable log.
  *
- * No retry, no queueing here (docs/tech-stack.md: ticket 12 is not the
- * outbox) — a failed POST reverts the optimistic entry and surfaces a
- * failure toast instead.
+ * What ticket 17 *did* change is how often the catch blocks below run. They
+ * were written when every failure threw; now `postEntry`/`deleteEntry` only
+ * throw on a 401, having queued everything else. So a log that can't reach
+ * the server no longer reverts and no longer toasts — it stands, and the
+ * pending chip reports it. The revert-and-warn path that remains is the
+ * session-expiry one, and the login screen is already swapping in over the
+ * top of it by the time the toast is set (src/client/shell/AppShell.tsx),
+ * which makes those two messages effectively unreachable — see the note
+ * under docs/design.md's canonical strings table.
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { uuidv7 } from 'uuidv7'

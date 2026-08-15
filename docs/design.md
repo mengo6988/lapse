@@ -74,10 +74,15 @@ Canonical strings (extend here, not ad-hoc):
 | Activity, empty | `nothing logged yet` |
 | Activity, load failed | `couldn't load activity — try again` |
 | Search, no hits | `no matches` |
-| Save failed (queued) | `couldn't save — retrying` |
-| Undo failed offline | `couldn't undo — offline` |
 | Login failure | `wrong password` |
 | Pending chip | `2 queued` (count + clock glyph) |
+| Queued sheet title | `queued` |
+| Queued sheet actions | `retry all` · `discard` |
+| Queued entry that the server rejected | `failed` |
+| Queued entry whose Tracker is gone | `unknown tracker` · `<tracker> · unknown variant` |
+| Queued undo (no Tracker to name) | `removing an entry` |
+
+Two strings the offline-lite grill specified are deliberately **not** in the table above. `couldn't save — retrying` and `couldn't undo — offline` were written for a client that surfaced a failed write as a toast; since build ticket 17 a failed write queues silently and the pending chip is the only surface for it, so neither string has a trigger left. (Both constants still exist in `src/client/log/useLogRow.ts` for the one failure the outbox refuses to swallow — a 401 — but the login screen replaces the whole shell at that point, so nothing renders them. Retiring that machinery is a cleanup, not a v1 blocker.)
 
 ## Design principles
 
@@ -163,7 +168,7 @@ Color as accent (3px card bar / 2px underline bar per row), not full-row fills �
 
 - Mobile-first layout; usable at desktop width but not optimised for it.
 - Dark mode only in v1 (settled in UI/UX grill 2026-08-14). CSS tokens structured so a light theme can be added later without component changes.
-- Optimistic everything: log-tap feedback is instant even offline (outbox). Pending indicator (offline-lite grill): mono chip in home header — "2 queued" + clock glyph in `overlay2`, peach when any entry failed; tap → sheet listing queued/failed entries with retry-all / per-entry discard. No per-row pending markers — the ledger stays quiet.
+- Optimistic everything: log-tap feedback is instant even offline (outbox). Pending indicator (offline-lite grill): mono chip in the **app header** — "2 queued" + clock glyph in `overlay2`, peach when any entry failed; tap → sheet listing queued/failed entries with retry-all / per-entry discard. No per-row pending markers — the ledger stays quiet. The chip shows on every tab, not only home (build ticket 19, amending the offline-lite grill's "home header"): the header is shared chrome, the queue is app-wide state, and hiding "your logs haven't landed" on four screens out of five is worse than showing it on all of them.
 - Anti-generic guardrail for implementation: no stock component-library look — the committed ledger × mocha direction (serif + mono, accent bars, noise texture) is the reference; deviations go through a design.md update, not ad-hoc styling.
 
 ## Patterns stolen from research

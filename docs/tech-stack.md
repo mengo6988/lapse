@@ -20,17 +20,17 @@
 - TanStack Query cache persisted to **IndexedDB** (`createAsyncStoragePersister` + `idb-keyval`, not localStorage) → last-known list renders offline.
 - Last-write-wins everywhere; no sync engine.
 
-### Outbox (hand-rolled, ~100–150 lines, IndexedDB via `idb`)
+### Outbox (hand-rolled, ~100–150 lines, IndexedDB via `idb-keyval`)
 
-- **Scope: `POST /entries` only.** Every other mutation fails fast offline with a toast — no queueing, no dependency ordering.
-- **Record**: `{ uuid (v7), payload, createdAt (client), attempts, status: pending | inflight | failed }`.
+- **Scope: `POST /entries` and `DELETE /entries/:id`.** Every other mutation fails fast offline with a toast — no queueing. Deletes are queued (amending this section's original "deletes are never queued", build ticket 17) because undo is the second half of tap-to-log: an undo of an Entry the server already has must survive being offline exactly as the log did. Ordering falls out of the serial drain — a create is always ahead of the delete that undoes it — and undo of a write still sitting in the queue drops that record outright instead of queueing a compensating delete.
+- **Record**: `{ id (client UUIDv7 — also the Entry id, which is what makes a replay idempotent), kind: create | delete, input (the POST body; null for a delete), queuedAt, attempts, status: pending | dead }`. No `inflight` state: one pass sends one item at a time and the drain-running flag already says whether anything is in flight, so persisting it would only ever be a lie left behind by a killed tab.
 - **Write path**: outbox record first (durable) → optimistic cache update → attempt POST → success removes record. TanStack mutation gets `retry: false` — the outbox IS the retry mechanism.
 - **Replay**: foreground-only (Background Sync unsupported on iOS). Triggers: app load/hydration, `online` event, `visibilitychange → visible`. Serial drain oldest-first by UUIDv7, one in-flight request, module-level drain-running flag. Multi-tab double-drain is harmless (server idempotent by id); no leader election.
 - **Retry policy**: exponential backoff, full jitter — `delay = min(60s, 2s·2^attempt)·random()` — within a drain run; each trigger starts a fresh run. Retryable: network error, 5xx. Non-retryable: 4xx → status `failed` (dead-letter), surfaced in UI, manual retry/discard only. No attempts cap that silently drops — a queued log lives until sent or user-discarded.
 - **Rehydration overlay**: after bootstrap fetch, pending outbox entries re-apply on top of server data (as `latestEntry` where newer) so a row logged offline doesn't flip back to overdue on reload.
-- **Undo (5s toast)**: entry still queued → delete outbox record + revert cache, server never touched. Already POSTed → `DELETE /entries/:id`; if that fails offline → "couldn't undo — offline" toast; deletes are never queued.
+- **Undo (5s toast)**: entry still queued → delete outbox record + revert cache, server never touched. Already POSTed → `DELETE /entries/:id`, itself queued if it can't be sent. The one gap that needs closing explicitly: undo can land while that create's own request is in flight, in which case the Entry is created after the record is gone — a successful send whose record has vanished queues the delete undo skipped, rather than dropping it and letting the Entry reappear at the next bootstrap.
 - **Clock skew**: dual timestamps (client `occurredAt`, server `createdAt`); server **clamps** future `occurredAt` to server-now instead of rejecting (see spec § Validation) so a skewed clock degrades to a slightly-wrong editable timestamp, never a lost log.
-- **Pending UI**: mono chip in home header ("2 queued", clock glyph, `overlay2`; peach when any `failed`); tap → sheet listing queued/failed entries with retry-all / per-entry discard. No per-row pending markers.
+- **Pending UI**: mono chip in the app header, on every tab rather than home only ("2 queued", clock glyph, `overlay2`; peach when any has dead-lettered); tap → sheet listing queued/failed entries with retry-all / per-entry discard. No per-row pending markers. See docs/design.md § Feel for why the chip is not home-only.
 
 ### SW update behavior (iOS-proofing, from PWA research)
 

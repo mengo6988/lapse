@@ -6,8 +6,24 @@ import type { BootstrapPayload } from '../api'
 import { session } from '../auth/session'
 import { isoDaysAgo, makeEntry, makeTracker, makeVariant } from '../home/fixtures'
 import { bootstrapQueryKey } from '../query/useBootstrap'
+import { outboxStore, setOutboxPersistence } from '../outbox/outboxStore'
+import type { KeyValStore } from '../query/storage'
 import { logWindowStore } from './logWindowStore'
 import { useLogRow } from './useLogRow'
+
+/** jsdom has no IndexedDB; the outbox takes an in-memory stand-in the same way the query cache does. */
+function memoryStore(): KeyValStore {
+  const data = new Map<string, string>()
+  return {
+    get: async (key) => data.get(key),
+    set: async (key, value) => {
+      data.set(key, value)
+    },
+    del: async (key) => {
+      data.delete(key)
+    },
+  }
+}
 
 function wrapper(queryClient: QueryClient) {
   return ({ children }: { children: ReactNode }) => (
@@ -40,8 +56,10 @@ function serverEntry(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 describe('useLogRow', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers()
+    setOutboxPersistence(memoryStore())
+    await outboxStore.setItems([])
   })
 
   afterEach(() => {
@@ -114,6 +132,13 @@ describe('useLogRow', () => {
 
     const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
     act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
+    // the outbox record is written before the request goes out (build ticket
+    // 17, docs/tech-stack.md § Outbox), so the POST is one microtask behind
+    // the tap rather than in the same turn.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
 
     const openState = logWindowStore.read()
     if (openState.kind !== 'open') throw new Error('expected an open undo window')
@@ -174,7 +199,7 @@ describe('useLogRow', () => {
     expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toBeNull()
   })
 
-  it('a failed POST reverts the optimistic entry and surfaces a failure toast, no queueing', async () => {
+  it('a failed POST queues instead of reverting — the optimistic entry stands and no failure toast appears', async () => {
     const priorEntry = makeEntry({ occurredAt: isoDaysAgo(10) })
     const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7, latestEntry: priorEntry })
     const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
@@ -192,9 +217,37 @@ describe('useLogRow', () => {
       await Promise.resolve()
     })
 
+    // build ticket 17: the write is in the outbox, so the row keeps saying it
+    // was just done and the undo window runs its full course. The pending chip
+    // (ticket 19) is what tells the user it hasn't reached the server yet.
+    const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
+    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry?.trackerId).toBe(tracker.id)
+    expect(logWindowStore.read()).toMatchObject({ kind: 'open', toastMessage: 'logged ✓' })
+    expect(outboxStore.read()).toMatchObject([{ kind: 'create', status: 'pending' }])
+  })
+
+  it('a 401 mid-log still reverts and warns — it is the one failure the outbox refuses to swallow', async () => {
+    const priorEntry = makeEntry({ occurredAt: isoDaysAgo(10) })
+    const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7, latestEntry: priorEntry })
+    const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(bootstrapQueryKey, payload)
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) }))
+
+    const { result } = renderHook(() => useLogRow(), { wrapper: wrapper(queryClient) })
+    act(() => result.current.logEntry({ trackerId: tracker.id, variantId: null }))
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
     expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toEqual(priorEntry)
     expect(logWindowStore.read()).toEqual({ kind: 'message', toastMessage: "couldn't log — try again" })
+    expect(outboxStore.read()).toEqual([])
   })
 
   it('undo requested while the POST is still pending skips the DELETE once it later fails to land', async () => {
@@ -226,7 +279,7 @@ describe('useLogRow', () => {
     expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toBeNull()
   })
 
-  it('undo requested while pending: once the POST lands, the follow-up DELETE firing but failing re-applies the Entry and warns', async () => {
+  it('undo requested while pending: once the POST lands, a follow-up DELETE that fails queues rather than un-undoing', async () => {
     const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7 })
     const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
     const queryClient = new QueryClient()
@@ -256,12 +309,14 @@ describe('useLogRow', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    // build ticket 17: the DELETE is queued, so the undo holds. Re-applying the
+    // Entry here would un-undo something the outbox is about to deliver.
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
-    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry?.trackerId).toBe(tracker.id)
-    expect(logWindowStore.read()).toEqual({ kind: 'message', toastMessage: "couldn't undo — offline" })
+    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toBeNull()
+    expect(outboxStore.read()).toMatchObject([{ kind: 'delete', status: 'pending' }])
   })
 
-  it('re-applies the Entry and shows "couldn\'t undo — offline" when the post-confirmation DELETE fails', async () => {
+  it('queues the DELETE when a post-confirmation undo fails, leaving the undo standing', async () => {
     const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7 })
     const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
     const queryClient = new QueryClient()
@@ -290,8 +345,8 @@ describe('useLogRow', () => {
     })
 
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
-    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry?.trackerId).toBe(tracker.id)
-    expect(logWindowStore.read()).toEqual({ kind: 'message', toastMessage: "couldn't undo — offline" })
+    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toBeNull()
+    expect(outboxStore.read()).toMatchObject([{ kind: 'delete', status: 'pending' }])
   })
 
   it('a second tap (even the same row) opens a fresh window and makes the first log permanent', async () => {
@@ -329,8 +384,10 @@ describe('useLogRow', () => {
 // sheet's backdated/annotated log reuses every choreography step below
 // (freeze, optimistic write, POST, undo) unchanged.
 describe('useLogRow entryOverrides (build ticket 13)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers()
+    setOutboxPersistence(memoryStore())
+    await outboxStore.setItems([])
   })
 
   afterEach(() => {
@@ -423,7 +480,7 @@ describe('useLogRow entryOverrides (build ticket 13)', () => {
     expect(body.note).toBe('felt good')
   })
 
-  it('a failed POST for a backdated/annotated log reverts the optimistic entry and surfaces the same failure toast', async () => {
+  it('a failed POST for a backdated/annotated log queues the same way a plain tap does', async () => {
     const priorEntry = makeEntry({ occurredAt: isoDaysAgo(10) })
     const tracker = makeTracker({ name: 'vacuum', thresholdDays: 7, latestEntry: priorEntry })
     const payload: BootstrapPayload = { categories: [], trackers: [tracker] }
@@ -447,8 +504,10 @@ describe('useLogRow entryOverrides (build ticket 13)', () => {
     })
 
     const cache = queryClient.getQueryData<BootstrapPayload>(bootstrapQueryKey)
-    expect(cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry).toEqual(priorEntry)
-    expect(logWindowStore.read()).toEqual({ kind: 'message', toastMessage: "couldn't log — try again" })
+    const cached = cache?.trackers.find((t) => t.id === tracker.id)?.latestEntry
+    expect(cached?.note).toBe('backdated')
+    expect(logWindowStore.read()).toMatchObject({ kind: 'open', toastMessage: 'logged ✓' })
+    expect(outboxStore.read()).toMatchObject([{ kind: 'create', status: 'pending' }])
   })
 })
 
@@ -457,8 +516,10 @@ describe('useLogRow entryOverrides (build ticket 13)', () => {
 // overwriting it with an older Entry would make the row claim it was last
 // done longer ago than it was, and re-sort the list on that claim.
 describe('useLogRow backdating behind the existing latest Entry (build ticket 13)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers()
+    setOutboxPersistence(memoryStore())
+    await outboxStore.setItems([])
   })
 
   afterEach(() => {
