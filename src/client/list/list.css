@@ -79,7 +79,8 @@
 }
 
 .list-search-row__input::placeholder {
-  color: var(--color-text-inactive);
+  /* not --color-text-inactive: overlay0 on base is 3.36:1, under AA for text. */
+  color: var(--color-text-muted);
 }
 
 .list-search-row__cancel {

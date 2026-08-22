@@ -76,7 +76,25 @@
   --radius-pill: 999px;
 
   --touch-target-min: 44px;
-  --tab-bar-height: 72px;
+
+  /*
+   * iOS safe areas. The app is a standalone PWA with viewport-fit=cover and
+   * a black-translucent status bar (src/client/index.html), which means the
+   * page really does draw under the notch and the home indicator — these are
+   * what keep content out from under them. The 0px fallbacks make every
+   * calc() below inert on a browser or device without insets.
+   */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /*
+   * The bar is 72px of chrome (docs/design.md § Navigation) plus whatever the
+   * home indicator claims underneath it. Folding the inset into the token
+   * rather than into .tab-bar alone is what keeps the screen's bottom padding
+   * (layout.css) and the undo toast's offset (log/log.css) clearing the real
+   * bar instead of a 72px guess.
+   */
+  --tab-bar-height: calc(72px + var(--safe-area-bottom));
 
   /* z-index scale. header/noise/tab-bar are consumed by this ticket; toast,
      scrim and sheet are named now so later tickets (12, 13, 14) don't invent
