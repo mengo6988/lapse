@@ -27,21 +27,42 @@ export function PendingChip() {
   const items = useOutboxItems()
   const [openedFrom, setOpenedFrom] = useState<HTMLElement | null>(null)
 
-  if (items.length === 0) return null
-
   const hasDeadItems = items.some((item) => item.status === 'dead')
   const className = hasDeadItems ? 'pending-chip pending-chip--dead' : 'pending-chip'
 
+  /**
+   * The live region is the wrapper, not the chip, and it stays mounted while
+   * the queue is empty. A screen reader announces *changes inside* a live
+   * region it was already watching — inserting the region and its content in
+   * the same breath is the case that reliably says nothing. Since the chip is
+   * the only signal that a log hasn't landed (LogToast.tsx carries
+   * role="status" for the same reason, and the two sit side by side in the
+   * header), it going silent is the whole failure.
+   *
+   * An empty wrapper is a zero-width flex item between the wordmark and the
+   * magnifier, so the header lays out exactly as it did.
+   */
   return (
     <>
-      <button
-        type="button"
-        className={className}
-        onClick={(event) => setOpenedFrom(event.currentTarget)}
-      >
-        <ActivityIcon className="pending-chip__icon" width={14} height={14} />
-        <span>{items.length} queued</span>
-      </button>
+      <div aria-live="polite" aria-atomic="true">
+        {items.length > 0 && (
+          <button
+            type="button"
+            className={className}
+            /*
+             * The dead-letter state is peach and nothing else on screen
+             * (outbox.css), so the label is the only place it is not
+             * colour-only. Visible copy stays the canonical "N queued"
+             * from docs/design.md's strings table.
+             */
+            aria-label={hasDeadItems ? `${items.length} queued, some failed` : undefined}
+            onClick={(event) => setOpenedFrom(event.currentTarget)}
+          >
+            <ActivityIcon className="pending-chip__icon" width={14} height={14} />
+            <span>{items.length} queued</span>
+          </button>
+        )}
+      </div>
 
       {openedFrom && <QueuedSheet restoreFocusTo={openedFrom} onClose={() => setOpenedFrom(null)} />}
     </>

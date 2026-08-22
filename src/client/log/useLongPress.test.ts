@@ -126,3 +126,70 @@ describe('useLongPress', () => {
     expect(onLongPress).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('keyboard long-press', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('fires after holding Space for the delay — the log sheet has a keyboard route', () => {
+    const onLongPress = vi.fn()
+    const { result } = renderHook(() => useLongPress({ onLongPress }))
+
+    act(() => result.current.onKeyDown({ key: ' ', repeat: false }))
+    expect(onLongPress).not.toHaveBeenCalled()
+
+    act(() => void vi.advanceTimersByTime(450))
+    expect(onLongPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses the click Space fires on key-up, so a hold does not also log a tap', () => {
+    const onLongPress = vi.fn()
+    const { result } = renderHook(() => useLongPress({ onLongPress }))
+
+    act(() => result.current.onKeyDown({ key: ' ', repeat: false }))
+    act(() => void vi.advanceTimersByTime(450))
+    act(() => result.current.onKeyUp())
+
+    expect(result.current.shouldSuppressClick()).toBe(true)
+  })
+
+  it('releasing Space early is a plain tap', () => {
+    const onLongPress = vi.fn()
+    const { result } = renderHook(() => useLongPress({ onLongPress }))
+
+    act(() => result.current.onKeyDown({ key: ' ', repeat: false }))
+    act(() => void vi.advanceTimersByTime(200))
+    act(() => result.current.onKeyUp())
+    act(() => void vi.advanceTimersByTime(450))
+
+    expect(onLongPress).not.toHaveBeenCalled()
+    expect(result.current.shouldSuppressClick()).toBe(false)
+  })
+
+  it('ignores auto-repeat, so a held key restarts nothing', () => {
+    const onLongPress = vi.fn()
+    const { result } = renderHook(() => useLongPress({ onLongPress }))
+
+    act(() => result.current.onKeyDown({ key: ' ', repeat: false }))
+    act(() => void vi.advanceTimersByTime(400))
+    act(() => result.current.onKeyDown({ key: ' ', repeat: true }))
+    act(() => void vi.advanceTimersByTime(50))
+
+    expect(onLongPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores Enter — it fires its click on key-down, so a hold would log a tap first', () => {
+    const onLongPress = vi.fn()
+    const { result } = renderHook(() => useLongPress({ onLongPress }))
+
+    act(() => result.current.onKeyDown({ key: 'Enter', repeat: false }))
+    act(() => void vi.advanceTimersByTime(450))
+
+    expect(onLongPress).not.toHaveBeenCalled()
+  })
+})

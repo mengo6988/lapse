@@ -62,6 +62,8 @@ export function SlippingCard({ row, now, onTap, justLogged = false }: SlippingCa
       onPointerUp={longPress.onPointerUp}
       onPointerCancel={longPress.onPointerCancel}
       onPointerLeave={longPress.onPointerLeave}
+      onKeyDown={longPress.onKeyDown}
+      onKeyUp={longPress.onKeyUp}
       onClick={() => {
         if (longPress.shouldSuppressClick()) return
         onTap?.(row)

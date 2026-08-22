@@ -69,6 +69,8 @@ export function ListRowItem({ row, now, onTap, justLogged = false, onOpenDetail 
         onPointerUp={longPress.onPointerUp}
         onPointerCancel={longPress.onPointerCancel}
         onPointerLeave={longPress.onPointerLeave}
+        onKeyDown={longPress.onKeyDown}
+        onKeyUp={longPress.onKeyUp}
         onClick={() => {
           if (longPress.shouldSuppressClick()) return
           onTap?.(row)

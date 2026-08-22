@@ -31,12 +31,21 @@ export interface UseLongPressOptions {
   readonly moveTolerancePx?: number
 }
 
+/** the fields this hook reads off a keydown; typed structurally, like LongPressPoint. */
+export interface LongPressKey {
+  readonly key: string
+  /** true while the OS is auto-repeating a held key — only the first counts as the press starting. */
+  readonly repeat: boolean
+}
+
 export interface UseLongPressResult {
   onPointerDown(point: LongPressPoint): void
   onPointerMove(point: LongPressPoint): void
   onPointerUp(): void
   onPointerCancel(): void
   onPointerLeave(): void
+  onKeyDown(event: LongPressKey): void
+  onKeyUp(): void
   /**
    * Call at the top of the element's own onClick. True (and reset back to
    * false) exactly once per fired long-press, so the click that follows a
@@ -103,6 +112,33 @@ export function useLongPress({
     [cancel, moveTolerancePx],
   )
 
+  /**
+   * The keyboard's long-press. Held Space is the one key that can carry it:
+   * on a `<button>`, Space fires its click on key*up*, so a hold that trips
+   * the timer still has its click ahead of it for `shouldSuppressClick` to
+   * swallow — exactly the pointer sequence, one input away. Enter can't do
+   * this: it fires click on key*down*, so a hold would log a tap first and
+   * open the sheet on top of it.
+   *
+   * Without this the log sheet — backdating, duration, note — has no keyboard
+   * route at all; every one of its call sites is pointer-only, and
+   * docs/design.md § Screens does not scope those fields to touch.
+   */
+  const onKeyDown = useCallback(
+    (event: LongPressKey) => {
+      if (event.key !== ' ' || event.repeat) return
+      startRef.current = null
+      firedRef.current = false
+      clearTimer()
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null
+        firedRef.current = true
+        onLongPressRef.current()
+      }, delayMs)
+    },
+    [clearTimer, delayMs],
+  )
+
   const shouldSuppressClick = useCallback(() => {
     const fired = firedRef.current
     firedRef.current = false
@@ -118,6 +154,9 @@ export function useLongPress({
     onPointerUp: cancel,
     onPointerCancel: cancel,
     onPointerLeave: cancel,
+    onKeyDown,
+    // releasing early is a plain tap, same as a short press.
+    onKeyUp: cancel,
     shouldSuppressClick,
   }
 }

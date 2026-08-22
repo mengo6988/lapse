@@ -46,6 +46,8 @@ export function QuickLogTile({ row, now, onTap, justLogged = false }: QuickLogTi
       onPointerUp={longPress.onPointerUp}
       onPointerCancel={longPress.onPointerCancel}
       onPointerLeave={longPress.onPointerLeave}
+      onKeyDown={longPress.onKeyDown}
+      onKeyUp={longPress.onKeyUp}
       onClick={() => {
         if (longPress.shouldSuppressClick()) return
         onTap?.(row)
