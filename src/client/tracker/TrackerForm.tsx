@@ -6,6 +6,7 @@
  * via PersistedVariantsEditor, by the time Save is pressed.
  */
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Category, Tracker } from '../api'
 import { ArchiveSection } from './ArchiveSection'
 import { CategoryPicker } from './CategoryPicker'
@@ -35,6 +36,7 @@ export function TrackerForm(props: TrackerFormProps) {
   const [formError, setFormError] = useState<string | undefined>()
   const [archiveError, setArchiveError] = useState<string | undefined>()
 
+  const navigate = useNavigate()
   const createTracker = useCreateTracker()
   const updateTracker = useUpdateTracker()
   const saving = props.mode === 'create' ? createTracker.isPending : updateTracker.isPending
@@ -55,7 +57,22 @@ export function TrackerForm(props: TrackerFormProps) {
       createTracker.mutate(
         { name: name.trim(), categoryId, thresholdDays, variants },
         {
-          onSuccess: onClose,
+          /*
+           * Land on the List, not wherever the sheet was opened from. A
+           * brand-new Tracker is invisible on Home: the slipping section
+           * takes only due-soon/overdue rows (selectSlippingRows.ts) and a
+           * never-logged row can't be either, while the quick-log grid is
+           * six tiles ranked by recency (selectQuickLogRows.ts), which a
+           * never-logged row sorts to the back of. So the moment the user is
+           * most likely to want to log the thing they just named is the
+           * moment the app has nowhere to show it — closing the sheet looks
+           * like nothing happened. The List always has the row, and a
+           * thresholded one sorts to the very top.
+           */
+          onSuccess: () => {
+            onClose()
+            navigate('/list')
+          },
           onError: (error) => {
             if (!(error instanceof TrackerApiError)) return
             applySaveError(new TrackerApiError(error.status, error.message, remapVariantFieldErrors(error.fieldErrors, originalIndexByPayloadIndex)))

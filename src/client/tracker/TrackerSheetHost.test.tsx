@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload } from '../api'
 import { bootstrapQueryKey } from '../query/useBootstrap'
@@ -28,7 +29,9 @@ function renderHost() {
   queryClient.setQueryData(bootstrapQueryKey, payload)
   return render(
     <QueryClientProvider client={queryClient}>
-      <TrackerSheetHost />
+      <MemoryRouter>
+        <TrackerSheetHost />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
