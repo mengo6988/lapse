@@ -6,6 +6,11 @@ services:
       - ./data:/data
     environment:
       - LAPSE_PASSWORD=${LAPSE_PASSWORD}
+      # All optional — unset, lapse behaves exactly as it did before them.
+      # See docs/capture.md.
+      - LAPSE_API_TOKEN=${LAPSE_API_TOKEN:-}
+      - LAPSE_TELEGRAM_BOT_TOKEN=${LAPSE_TELEGRAM_BOT_TOKEN:-}
+      - LAPSE_TELEGRAM_CHAT_ID=${LAPSE_TELEGRAM_CHAT_ID:-}
     # No published ports: Traefik reaches the container over the shared
     # traefik network. exposedbydefault=false on that Traefik, so the
     # traefik.enable label below is required.

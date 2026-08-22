@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { clearSession, issueSession, matches, requireSession } from './auth.js'
+import { clearSession, issueSession, matches, requireApiAccess } from './auth.js'
 import type { Db } from './db.js'
 import { loginRateLimit } from './rateLimit.js'
 import { bootstrapRoutes } from './routes/bootstrap.js'
@@ -13,6 +13,8 @@ import { trackerRoutes } from './routes/trackers.js'
 export type AppDeps = {
   db: Db
   password: string
+  /** optional bearer credential for non-browser callers — see requireApiAccess. */
+  apiToken?: string
 }
 
 const loginSchema = z.object({ password: z.string().min(1) })
@@ -23,7 +25,7 @@ const LOGIN_BODY_LIMIT_BYTES = 2 * 1024
  * The API surface, built around injected dependencies so integration tests can
  * hand it an in-memory database and drive it through `app.request()`.
  */
-export function createApp({ db, password }: AppDeps) {
+export function createApp({ db, password, apiToken }: AppDeps) {
   const app = new Hono()
 
   // Unauthenticated: the Docker HEALTHCHECK target and the way in.
@@ -65,7 +67,7 @@ export function createApp({ db, password }: AppDeps) {
     return c.json({ ok: true })
   })
 
-  app.use('/api/*', requireSession(password))
+  app.use('/api/*', requireApiAccess(password, apiToken))
 
   app.route('/api', bootstrapRoutes({ db }))
   app.route('/api', trackerRoutes({ db }))

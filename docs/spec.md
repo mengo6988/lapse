@@ -72,7 +72,8 @@ Full Entry history kept forever (enables v2 stats).
 Server is dumb CRUD; client computes ratios and sort (ADR-0001).
 
 ```
-POST   /auth/login                {password} → session cookie (LAPSE_PASSWORD required; rate-limited 10/15min per IP — ADR-0003 amendment)
+POST   /auth/login                {password} → session cookie (LAPSE_PASSWORD required; rate-limited 10/15min per IP — ADR-0003 amendment; body capped at 2KB)
+                                  every /api/* route also accepts `Authorization: Bearer <LAPSE_API_TOKEN>` when that env var is set (docs/capture.md)
 POST   /auth/logout               clears the session cookie → 200 {ok:true}; unauthenticated, so it always succeeds even against a missing or stale cookie
 GET    /api/health                unauthenticated liveness (Docker HEALTHCHECK target)
 GET    /bootstrap                 see payload below

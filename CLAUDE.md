@@ -1,6 +1,6 @@
 # lapse
 
-Single-user self-hosted "when did I last do X?" tracker. Read `CONTEXT.md` for vocabulary (Tracker/Variant/Entry/Threshold), `docs/spec.md` for product spec, `docs/tech-stack.md` for stack, `docs/design.md` for UX, `docs/grill-checklist.md` for what's still undecided.
+Single-user self-hosted "when did I last do X?" tracker. Read `CONTEXT.md` for vocabulary (Tracker/Variant/Entry/Threshold), `docs/spec.md` for product spec, `docs/tech-stack.md` for stack, `docs/design.md` for UX, `docs/grill-checklist.md` for what's still undecided, `docs/capture.md` for logging without opening the app (API token, Shortcuts, Telegram bot).
 
 ## Agent skills
 

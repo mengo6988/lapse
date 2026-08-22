@@ -12,6 +12,8 @@
 | DB | SQLite via better-sqlite3 + Drizzle ORM | Migrations run on boot |
 | PWA | vite-plugin-pwa, `registerType: 'autoUpdate'` | Manifest + SW shell precache; avoids stale-bundle footgun (ADR-0002) |
 | Auth | Single password (`LAPSE_PASSWORD` env, **required**), httpOnly + Secure + SameSite=Lax cookie, 1y expiry | Public deployment — see ADR-0003 amendment |
+| Machine auth | Optional `LAPSE_API_TOKEN`, `Authorization: Bearer` on `/api/*` | For Shortcuts/scripts/the bot, which can't hold a cookie — `docs/capture.md` |
+| Zero-UI capture | Optional Telegram bot, long polling, no new route | `docs/capture.md` |
 | Container | Single Docker image, multi-stage build | Volume mount `/data` for `lapse.db` |
 
 ## Offline-lite (in v1, per ADR-0002 + offline-lite grill 2026-08-15)
@@ -49,6 +51,11 @@ Global rules apply: TDD (tests first), 80% minimum coverage, unit + integration 
 - **Unit (client)**: urgency ratio, sorting, observed interval, and threshold-suggestion logic live in pure modules and carry most coverage as plain unit tests. Component tests (Testing Library + jsdom) stay thin: wiring only — tap logs, undo toast, category chips filter. No Vitest browser mode.
 - **Unit (outbox)**: the hand-rolled outbox is the main risk surface — full unit coverage with `fake-indexeddb` + stubbed `fetch`: drain order, backoff/jitter, 4xx dead-letter, undo paths, rehydration overlay. The service worker itself is vite-plugin-pwa output and is not tested; SW registration glue is excluded from coverage.
 - **Integration (API)**: Hono `app.request()` (in-process, no HTTP server) against better-sqlite3 `:memory:` with Drizzle migrations applied in suite setup; fresh DB per test file. Covers routes, Zod validation, entry idempotency, and the occurredAt clamp.
+- **Telegram bot**: everything the bot decides — name matching, what gets written, what it replies, and the
+  chat allowlist — is a pure function over an in-memory database (`updateReply`/`handleMessage`), and the four
+  Bot API calls are tested against a stubbed `fetch`. The poll loop itself (`startTelegramBot`) is not: it is
+  a `while` around one tested call, in the same class as the SW glue above. Verified by hand against a real
+  bot token, including that a rejected `getUpdates` logs, backs off, and leaves the HTTP server serving.
 - **E2E**: thin Playwright smoke suite — 2–3 journeys against the built app + real server + temp SQLite file: create tracker → tap log → row fresh; long-press detailed log; archive flow. No SW/offline simulation in E2E (offline correctness is carried by the outbox unit layer).
 - **Coverage gate**: 80% lines/functions/statements/branches as thresholds in the Vitest config, so `vitest run --coverage` fails under threshold anywhere, including locally. Excluded: entrypoints (`main.tsx`, server boot), SW registration glue, migrations folder, config files. No CI in v1 (ops grill) — the config-level gate on local runs is the enforcement.
 

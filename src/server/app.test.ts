@@ -173,3 +173,54 @@ describe('login rate limit', () => {
     }
   })
 })
+
+describe('bearer token access', () => {
+  const API_TOKEN = 'a1b2c3d4e5f60718293a4b5c6d7e8f90'
+  const tokenApp = () => createApp({ db: createTestDb({ seed: true }), password: PASSWORD, apiToken: API_TOKEN })
+
+  it('accepts a valid bearer token where the cookie would have been', async () => {
+    const res = await tokenApp().request('/api/bootstrap', {
+      headers: { authorization: `Bearer ${API_TOKEN}` },
+    })
+
+    expect(res.status).toBe(200)
+  })
+
+  it('rejects a wrong token', async () => {
+    const res = await tokenApp().request('/api/bootstrap', {
+      headers: { authorization: 'Bearer 00000000000000000000000000000000' },
+    })
+
+    expect(res.status).toBe(401)
+  })
+
+  it('rejects a token presented without the Bearer scheme', async () => {
+    const res = await tokenApp().request('/api/bootstrap', { headers: { authorization: API_TOKEN } })
+
+    expect(res.status).toBe(401)
+  })
+
+  it('rejects every bearer token when none is configured', async () => {
+    const res = await testApp().request('/api/bootstrap', {
+      headers: { authorization: `Bearer ${API_TOKEN}` },
+    })
+
+    expect(res.status).toBe(401)
+  })
+
+  it('still refuses an unauthenticated request', async () => {
+    expect((await tokenApp().request('/api/bootstrap')).status).toBe(401)
+  })
+
+  it('accepts a session cookie as before', async () => {
+    const app = tokenApp()
+    const login = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: PASSWORD }),
+    })
+    const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+
+    expect((await app.request('/api/bootstrap', { headers: { cookie } })).status).toBe(200)
+  })
+})

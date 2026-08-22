@@ -1,9 +1,9 @@
 import { zValidator } from '@hono/zod-validator'
 import { and, desc, eq, isNotNull, lt, notInArray, or } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { uuidv7 } from 'uuidv7'
 import { z } from 'zod'
-import { entries, trackers, variants } from '../schema.js'
+import { clampFutureOccurredAt, createEntry } from '../entryWrites.js'
+import { entries, trackers } from '../schema.js'
 import type { RouteDeps } from './deps.js'
 
 const DEFAULT_PAGE_LIMIT = 50
@@ -30,55 +30,19 @@ const historyQuerySchema = z.object({
 })
 
 /**
- * A future occurredAt degrades to an editable server-now instead of being
- * rejected, per docs/spec.md § Validation (a skewed client clock must never
- * dead-letter a log).
- */
-function clampFutureOccurredAt(occurredAt: string | undefined, nowIso: string): string {
-  if (!occurredAt) return nowIso
-  return new Date(occurredAt).getTime() > new Date(nowIso).getTime() ? nowIso : occurredAt
-}
-
-/**
  * Entry and history routes. Paths are declared relative to the `/api` mount in
  * app.ts (so `/entries`, `/trackers/:id/entries`, ...).
  */
 export function entryRoutes({ db }: RouteDeps) {
   const app = new Hono()
 
+  // The write itself lives in src/server/entryWrites.ts, shared with the
+  // Telegram bot — this handler is the HTTP shape around it. A replayed id
+  // comes back 200 rather than 201, which is what makes an outbox replay safe.
   app.post('/entries', zValidator('json', createEntrySchema), (c) => {
-    const body = c.req.valid('json')
-
-    // Idempotency (docs/spec.md § Idempotency): a replayed outbox id returns
-    // the existing row untouched, before any other validation runs.
-    if (body.id) {
-      const existing = db.select().from(entries).where(eq(entries.id, body.id)).get()
-      if (existing) return c.json(existing, 200)
-    }
-
-    const tracker = db.select().from(trackers).where(eq(trackers.id, body.trackerId)).get()
-    if (!tracker) return c.json({ error: 'tracker not found' }, 404)
-
-    if (body.variantId) {
-      const variant = db.select().from(variants).where(eq(variants.id, body.variantId)).get()
-      if (!variant || variant.trackerId !== body.trackerId) {
-        return c.json({ error: 'variant does not belong to tracker' }, 400)
-      }
-    }
-
-    const nowIso = new Date().toISOString()
-    const entry = {
-      id: body.id ?? uuidv7(),
-      trackerId: body.trackerId,
-      variantId: body.variantId ?? null,
-      occurredAt: clampFutureOccurredAt(body.occurredAt, nowIso),
-      durationMinutes: body.durationMinutes ?? null,
-      note: body.note ?? null,
-      createdAt: nowIso,
-    }
-
-    db.insert(entries).values(entry).run()
-    return c.json(entry, 201)
+    const result = createEntry(db, c.req.valid('json'))
+    if (!result.ok) return c.json({ error: result.error }, result.status)
+    return c.json(result.entry, result.created ? 201 : 200)
   })
 
   app.patch('/entries/:id', zValidator('json', updateEntrySchema), (c) => {

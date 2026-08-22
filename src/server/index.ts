@@ -6,6 +6,7 @@ import { scheduleBackups } from './backupSchedule.js'
 import { openDatabase } from './db.js'
 import { parseEnv } from './env.js'
 import { seedCategories } from './seed.js'
+import { startTelegramBot } from './telegram/bot.js'
 
 const CLIENT_DIR = 'dist/client'
 
@@ -16,7 +17,18 @@ function boot() {
   seedCategories(db)
   scheduleBackups(db.$client, env.DATA_DIR)
 
-  const app = createApp({ db, password: env.LAPSE_PASSWORD })
+  const app = createApp({ db, password: env.LAPSE_PASSWORD, apiToken: env.LAPSE_API_TOKEN })
+
+  // Both or neither: a bot token with no chat id would answer anyone who
+  // finds it. Absent, lapse is exactly what it was before.
+  if (env.LAPSE_TELEGRAM_BOT_TOKEN && env.LAPSE_TELEGRAM_CHAT_ID) {
+    startTelegramBot({
+      db,
+      botToken: env.LAPSE_TELEGRAM_BOT_TOKEN,
+      chatId: env.LAPSE_TELEGRAM_CHAT_ID,
+    })
+    console.log('telegram bot polling')
+  }
 
   // The service worker and the entry HTML must always be revalidated, or a
   // deploy is invisible to an installed PWA (docs/tech-stack.md § SW update).

@@ -43,13 +43,40 @@ export function clearSession(c: Context): void {
   })
 }
 
-export function requireSession(password: string): MiddlewareHandler {
+function bearerToken(header: string | undefined): string | null {
+  if (!header) return null
+  const [scheme, ...rest] = header.split(' ')
+  if (scheme?.toLowerCase() !== 'bearer') return null
+  const token = rest.join(' ').trim()
+  return token.length > 0 ? token : null
+}
+
+/**
+ * The browser's session cookie, or a long-lived bearer token when one is
+ * configured.
+ *
+ * The cookie is what a person holds; the token is what a *machine* holds — an
+ * Apple Shortcut on the Action Button, a script, the Telegram bot. They can't
+ * share one credential: Shortcuts has no reliable way to capture a Set-Cookie
+ * from a login response and replay it on later runs, which is why the API is
+ * otherwise unreachable from anything but the app itself. And the token can't
+ * just be the password, because the password's whole protection is living in
+ * an httpOnly cookie nothing can read back out, while a token pasted into a
+ * Shortcut travels with that Shortcut every time it's exported or shared.
+ *
+ * Same blast radius as the password once presented (full /api/*, no scopes),
+ * which is ADR-0003's single-user stance held rather than widened. Rotating it
+ * is changing the env var and restarting.
+ */
+export function requireApiAccess(password: string, apiToken?: string): MiddlewareHandler {
   const expected = sessionToken(password)
   return async (c, next) => {
     const cookie = getCookie(c, SESSION_COOKIE)
-    if (!cookie || !matches(cookie, expected)) {
-      return c.json({ error: 'unauthorized' }, 401)
-    }
-    await next()
+    if (cookie && matches(cookie, expected)) return next()
+
+    const presented = bearerToken(c.req.header('authorization'))
+    if (apiToken && presented && matches(presented, apiToken)) return next()
+
+    return c.json({ error: 'unauthorized' }, 401)
   }
 }
