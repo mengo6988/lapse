@@ -58,4 +58,40 @@ describe('formatRowSubline', () => {
   it('reads "last done never" for a thresholdless, never-logged row', () => {
     expect(formatRowSubline(row({ lastEntryAt: null, thresholdDays: null }), NOW)).toBe('last done never')
   })
+
+  it('says how far over an overdue row is — the accent bar carrying that is aria-hidden', () => {
+    expect(
+      formatRowSubline(
+        row({ lastEntryAt: '2026-08-03T00:00:00.000Z', thresholdDays: 7, urgency: 'overdue' }),
+        NOW,
+      ),
+    ).toBe('last done 12d ago · every 7d · 5d over')
+  })
+
+  it('says when a due-soon row is due', () => {
+    expect(
+      formatRowSubline(
+        row({ lastEntryAt: '2026-08-09T00:00:00.000Z', thresholdDays: 7, urgency: 'due-soon' }),
+        NOW,
+      ),
+    ).toBe('last done 6d ago · every 7d · due tomorrow')
+  })
+
+  it('counts down the remaining days when a due-soon row has more than one left', () => {
+    expect(
+      formatRowSubline(
+        row({ lastEntryAt: '2026-07-29T00:00:00.000Z', thresholdDays: 20, urgency: 'due-soon' }),
+        NOW,
+      ),
+    ).toBe('last done 17d ago · every 20d · due in 3d')
+  })
+
+  it('adds nothing for a fresh row — the absence of a warning is the signal', () => {
+    expect(
+      formatRowSubline(
+        row({ lastEntryAt: '2026-08-14T00:00:00.000Z', thresholdDays: 7, urgency: 'fresh' }),
+        NOW,
+      ),
+    ).toBe('last done 1d ago · every 7d')
+  })
 })
