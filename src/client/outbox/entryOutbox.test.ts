@@ -210,7 +210,10 @@ describe('postEntry', () => {
       postEntry({ id: 'entry-3', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' }),
     ).resolves.toBeUndefined()
 
-    expect(outboxStore.read()).toMatchObject([{ id: 'entry-3', kind: 'create', status: 'pending', attempts: 0 }])
+    // attempts: 1, not 0 — the failed live send counts as the first attempt, which
+    // is what gives the drain a backoff to schedule instead of leaving the item
+    // pending with nothing watching it.
+    expect(outboxStore.read()).toMatchObject([{ id: 'entry-3', kind: 'create', status: 'pending', attempts: 1 }])
     const queued = outboxStore.read()[0] as OutboxItem
     expect(queued.input).toEqual({
       id: 'entry-3',
@@ -226,6 +229,23 @@ describe('postEntry', () => {
     await postEntry({ id: 'entry-4', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' })
 
     expect(outboxStore.read()).toMatchObject([{ id: 'entry-4', status: 'pending' }])
+  })
+
+  it('bumps attempts on a retryable live failure, so the drain has a backoff to schedule', async () => {
+    stubFetch({ ok: false, status: 500, json: async () => ({ error: 'boom' }) })
+
+    await postEntry({ id: 'entry-4b', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' })
+
+    // left at 0, the item is pending with nothing scheduled and nothing watching it.
+    expect(outboxStore.read()).toMatchObject([{ id: 'entry-4b', status: 'pending', attempts: 1 }])
+  })
+
+  it('does not bump attempts on a dead-lettered live failure — a 4xx is not retried', async () => {
+    stubFetch({ ok: false, status: 400, json: async () => ({ error: 'bad tracker' }) })
+
+    await postEntry({ id: 'entry-4c', trackerId: 't1', variantId: null, occurredAt: '2026-08-15T00:00:00.000Z' })
+
+    expect(outboxStore.read()).toMatchObject([{ id: 'entry-4c', status: 'dead', attempts: 0 }])
   })
 
   it('queues dead-lettered on a non-401 4xx — the server rejected it on its merits', async () => {

@@ -94,6 +94,7 @@ async function sendQueued(item: OutboxItem): Promise<void> {
   await enqueueOutboxItem(item)
 
   const { path, init } = requestFor(item)
+  let outcome: 'sent' | 'dead' | 'retryable' = 'sent'
   try {
     await apiFetch(path, init)
   } catch (error) {
@@ -105,10 +106,8 @@ async function sendQueued(item: OutboxItem): Promise<void> {
       await removeOutboxItem(item.id)
       throw error
     }
-    if (error.status !== null && error.status < 500) {
-      await updateOutboxItem(item.id, { status: 'dead' })
-    }
-    return
+    outcome = error.status !== null && error.status < 500 ? 'dead' : 'retryable'
+    if (outcome === 'dead') await updateOutboxItem(item.id, { status: 'dead' })
   } finally {
     // released before settling, so a drain pass woken by the settle's own
     // store change is free to pick up whatever that leaves behind — a
@@ -116,6 +115,27 @@ async function sendQueued(item: OutboxItem): Promise<void> {
     // sent.
     releaseOutboxItem(item.id)
   }
+
+  /**
+   * A network error or 5xx leaves the record pending — but pending is not the
+   * same as scheduled. This is the *live* send path, and nothing else is
+   * watching it: the enqueue above already woke a drain pass, which found the
+   * item claimed by this very send and walked past it, so that pass ended with
+   * nothing to retry and no timer set. Without the bump below the write then
+   * sits there until some unrelated trigger happens along (another tap, an
+   * `online` event, the tab being hidden and shown again) — the user watching
+   * a connected app would never see it land, which is not what
+   * docs/tech-stack.md § Outbox means by "lives until sent or user-discarded".
+   *
+   * Bumping the attempt count is the whole fix: it notifies the store, which
+   * wakes a drain pass (src/client/outbox/useOutboxDrain.ts) that can now
+   * actually claim the item, and that pass owns the backoff from there.
+   * It has to happen *after* the `finally` releases the claim — inside the
+   * catch, the woken pass would find the item still claimed and walk past it
+   * exactly like the first one did.
+   */
+  if (outcome === 'retryable') return updateOutboxItem(item.id, { attempts: item.attempts + 1 })
+  if (outcome === 'dead') return
 
   await settleSentOutboxItem(item)
 }
