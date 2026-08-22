@@ -19,6 +19,7 @@
  */
 import { useState } from 'react'
 import { ActivityIcon } from '../shell/icons'
+import { useExitTransition } from '../shell/useExitTransition'
 import { useOutboxItems } from './outboxStore'
 import { QueuedSheet } from './QueuedSheet'
 import './outbox.css'
@@ -26,9 +27,16 @@ import './outbox.css'
 export function PendingChip() {
   const items = useOutboxItems()
   const [openedFrom, setOpenedFrom] = useState<HTMLElement | null>(null)
+  // both latches hold their element mounted through a 200ms exit fade — the
+  // chip's disappearance when the queue drains is the quiet "your log
+  // landed" signal, and shouldn't be a blink.
+  const chip = useExitTransition(items.length > 0 ? items : null)
+  const sheet = useExitTransition(openedFrom)
 
-  const hasDeadItems = items.some((item) => item.status === 'dead')
-  const className = hasDeadItems ? 'pending-chip pending-chip--dead' : 'pending-chip'
+  const chipItems = chip.value ?? []
+  const hasDeadItems = chipItems.some((item) => item.status === 'dead')
+  const stateClass = hasDeadItems ? 'pending-chip pending-chip--dead' : 'pending-chip'
+  const className = chip.closing ? `${stateClass} pending-chip--out` : stateClass
 
   /**
    * The live region is the wrapper, not the chip, and it stays mounted while
@@ -45,7 +53,7 @@ export function PendingChip() {
   return (
     <>
       <div aria-live="polite" aria-atomic="true">
-        {items.length > 0 && (
+        {chip.value !== null && (
           <button
             type="button"
             className={className}
@@ -59,12 +67,14 @@ export function PendingChip() {
             onClick={(event) => setOpenedFrom(event.currentTarget)}
           >
             <ActivityIcon className="pending-chip__icon" width={14} height={14} />
-            <span>{items.length} queued</span>
+            <span>{chipItems.length} queued</span>
           </button>
         )}
       </div>
 
-      {openedFrom && <QueuedSheet restoreFocusTo={openedFrom} onClose={() => setOpenedFrom(null)} />}
+      {sheet.value && (
+        <QueuedSheet restoreFocusTo={sheet.value} onClose={() => setOpenedFrom(null)} closing={sheet.closing} />
+      )}
     </>
   )
 }

@@ -23,13 +23,15 @@ import { removeOutboxItem, retryAllOutboxItems, useOutboxItems, type OutboxItem 
 interface QueuedSheetProps {
   onClose: () => void
   restoreFocusTo: HTMLElement | null
+  /** true while the caller plays the exit animation — see src/client/shell/useExitTransition.ts. */
+  closing?: boolean
 }
 
 function rowClassName(item: OutboxItem): string {
   return item.status === 'dead' ? 'queued-sheet__row queued-sheet__row--dead' : 'queued-sheet__row'
 }
 
-export function QueuedSheet({ onClose, restoreFocusTo }: QueuedSheetProps) {
+export function QueuedSheet({ onClose, restoreFocusTo, closing = false }: QueuedSheetProps) {
   const items = useOutboxItems()
   const { data: bootstrap } = useBootstrapQuery()
   const containerRef = useFocusTrap<HTMLDivElement>(true, onClose, restoreFocusTo)
@@ -40,8 +42,8 @@ export function QueuedSheet({ onClose, restoreFocusTo }: QueuedSheetProps) {
 
   return (
     <>
-      <div className="tracker-sheet-scrim" onClick={onClose} />
-      <TrackerSheet title="queued" onClose={onClose} containerRef={containerRef}>
+      <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onClose} />
+      <TrackerSheet title="queued" onClose={onClose} containerRef={containerRef} closing={closing}>
         <div className="queued-sheet">
           {/*
             Always enabled while the sheet is open, even when nothing has

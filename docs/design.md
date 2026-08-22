@@ -44,6 +44,8 @@ Texture: full-screen fractal-noise SVG overlay at 0.045 opacity, pointer-events 
 
 Gentle spring settle (rows/cards easing into place); undo toast slides in like a slip of paper. No bouncy overshoot, no attention-grabbing loops. From prototype ticket 12: long-press threshold 450ms; log settle ≈340ms spring; post-undo-window re-sort is a gentle ~200ms fade, never an instant jump; `prefers-reduced-motion` collapses all of it.
 
+Sheets slide up from the bottom edge (340ms, drawer curve `--ease-sheet`) and leave faster than they arrive (200ms) — dismissal reads as release, not choreography. The scrim, the toast, and the pending chip fade out over the same 200ms instead of blinking away; `useExitTransition` (src/client/shell) holds each one mounted while its exit plays, and its timer must match `--duration-fade`.
+
 ## Branding (settled in branding grill 2026-08-15)
 
 ### Name treatment

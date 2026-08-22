@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from 'react'
 import { useBootstrapQuery } from '../query/useBootstrap'
+import { useExitTransition } from '../shell/useExitTransition'
 import './trackerSheet.css'
 import { TrackerForm } from './TrackerForm'
 import { TrackerSheet } from './TrackerSheet'
@@ -13,13 +14,16 @@ import { trackerSheetStore, useTrackerSheetState } from './trackerSheetStore'
 import { useFocusTrap } from './useFocusTrap'
 
 export function TrackerSheetHost() {
-  const state = useTrackerSheetState()
-  const active = state.mode !== 'closed'
-  const openedFrom = state.mode === 'closed' ? null : state.openedFrom
+  const storeState = useTrackerSheetState()
+  const active = storeState.mode !== 'closed'
+  const openedFrom = storeState.mode === 'closed' ? null : storeState.openedFrom
   const containerRef = useFocusTrap<HTMLDivElement>(active, trackerSheetStore.close, openedFrom)
+  // the store flips to closed instantly (focus restores right away, above);
+  // the latch only keeps the DOM around while the exit animation plays.
+  const { value: state, closing } = useExitTransition(storeState.mode === 'closed' ? null : storeState)
   const { data } = useBootstrapQuery()
 
-  if (state.mode === 'closed') return null
+  if (state === null) return null
 
   const categories = data?.categories ?? []
   let title: string
@@ -42,8 +46,11 @@ export function TrackerSheetHost() {
 
   return (
     <>
-      <div className="tracker-sheet-scrim" onClick={trackerSheetStore.close} />
-      <TrackerSheet title={title} onClose={trackerSheetStore.close} containerRef={containerRef}>
+      <div
+        className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'}
+        onClick={trackerSheetStore.close}
+      />
+      <TrackerSheet title={title} onClose={trackerSheetStore.close} containerRef={containerRef} closing={closing}>
         {content}
       </TrackerSheet>
     </>

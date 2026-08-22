@@ -10,6 +10,27 @@
   inset: 0;
   z-index: var(--z-scrim);
   background: rgb(0 0 0 / 0.5);
+  animation: sheet-scrim-in var(--duration-fade) var(--ease-standard);
+}
+
+/* exit pair — held mounted for EXIT_DURATION_MS by useExitTransition
+   (src/client/shell/useExitTransition.ts), which must match the
+   --duration-fade these run at. `forwards` keeps the end state so the
+   element is invisible for whatever remains of the timer. */
+.tracker-sheet-scrim--closing {
+  animation: sheet-scrim-out var(--duration-fade) var(--ease-standard) forwards;
+}
+
+@keyframes sheet-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-scrim-out {
+  to {
+    opacity: 0;
+  }
 }
 
 .tracker-sheet {
@@ -24,6 +45,26 @@
   border-top: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-3) var(--space-8) var(--space-9);
+  animation: sheet-in var(--duration-settle) var(--ease-sheet);
+}
+
+.tracker-sheet--closing {
+  animation: sheet-out var(--duration-fade) var(--ease-sheet) forwards;
+}
+
+/* full-height travel from the bottom edge, the classic drawer enter —
+   docs/design.md § Motion. Exit is deliberately faster than enter
+   (200ms vs 340ms): dismissal should feel like release, not choreography. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-out {
+  to {
+    transform: translateY(100%);
+  }
 }
 
 .tracker-sheet:focus {

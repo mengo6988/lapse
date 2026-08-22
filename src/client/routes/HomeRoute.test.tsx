@@ -6,6 +6,7 @@ import type { BootstrapPayload } from '../api'
 import { session } from '../auth/session'
 import { logSheetStore } from '../log/logSheetStore'
 import { logWindowStore } from '../log/logWindowStore'
+import { EXIT_DURATION_MS } from '../shell/useExitTransition'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { isoDaysAgo, makeEntry, makeTracker, makeVariant } from '../home/fixtures'
 import { HomeRoute } from './HomeRoute'
@@ -208,6 +209,12 @@ describe('HomeRoute tap-to-log (build ticket 12)', () => {
       await Promise.resolve()
     })
 
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
+    })
+
     const slippingSection = screen.getByRole('region', { name: 'slipping' })
     expect(within(slippingSection).getByText('74d')).toBeTruthy()
     expect(screen.queryByRole('status')).toBeNull()
@@ -231,6 +238,12 @@ describe('HomeRoute tap-to-log (build ticket 12)', () => {
     await act(async () => {
       vi.advanceTimersByTime(5000)
       await Promise.resolve()
+    })
+
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
     })
 
     // now fresh, no longer overdue/due-soon — the slipping section reflects the live (unfrozen) computation again.
@@ -293,6 +306,12 @@ describe('HomeRoute long-press log sheet (build ticket 13)', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'log' }))
       await vi.advanceTimersByTimeAsync(0)
+    })
+
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
     })
 
     expect(screen.queryByRole('dialog')).toBeNull()

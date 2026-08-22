@@ -12,6 +12,7 @@
  * freeze/optimistic-write/POST/undo choreography a plain tap gets, per this
  * ticket's acceptance criteria, because it's the same function underneath.
  */
+import { useExitTransition } from '../shell/useExitTransition'
 import { LogSheet } from './LogSheet'
 import { logSheetStore, useLogSheetState } from './logSheetStore'
 import { useLogRow, type EntryOverrides } from './useLogRow'
@@ -19,24 +20,32 @@ import { TrackerSheet } from '../tracker/TrackerSheet'
 import { useFocusTrap } from '../tracker/useFocusTrap'
 
 export function LogSheetHost() {
-  const state = useLogSheetState()
-  const active = state.mode === 'open'
-  const openedFrom = state.mode === 'open' ? state.openedFrom : null
+  const storeState = useLogSheetState()
+  const active = storeState.mode === 'open'
+  const openedFrom = storeState.mode === 'open' ? storeState.openedFrom : null
   const containerRef = useFocusTrap<HTMLDivElement>(active, logSheetStore.close, openedFrom)
+  // the store flips to closed instantly (focus restores right away, above);
+  // the latch only keeps the DOM around while the exit animation plays.
+  const { value: state, closing } = useExitTransition(storeState.mode === 'open' ? storeState : null)
   const { logEntry } = useLogRow()
 
-  if (state.mode !== 'open') return null
+  if (state === null) return null
 
   function handleSubmit(overrides: EntryOverrides) {
-    if (state.mode !== 'open') return
-    logEntry(state.target, overrides)
+    // checked against the live store, not the latch — a submit that lands
+    // during the 200ms exit window must not log twice.
+    if (storeState.mode !== 'open') return
+    logEntry(storeState.target, overrides)
     logSheetStore.close()
   }
 
   return (
     <>
-      <div className="tracker-sheet-scrim" onClick={logSheetStore.close} />
-      <TrackerSheet title="log entry" onClose={logSheetStore.close} containerRef={containerRef}>
+      <div
+        className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'}
+        onClick={logSheetStore.close}
+      />
+      <TrackerSheet title="log entry" onClose={logSheetStore.close} containerRef={containerRef} closing={closing}>
         <LogSheet now={new Date()} onSubmit={handleSubmit} />
       </TrackerSheet>
     </>

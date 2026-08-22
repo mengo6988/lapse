@@ -23,6 +23,26 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  animation: pending-chip-in var(--duration-fade) var(--ease-standard);
+}
+
+/* the fade-out when the queue drains is the quiet "your log landed"
+   signal; PendingChip.tsx holds the node mounted for EXIT_DURATION_MS
+   (src/client/shell/useExitTransition.ts) while it plays. */
+.pending-chip--out {
+  animation: pending-chip-out var(--duration-fade) var(--ease-standard) forwards;
+}
+
+@keyframes pending-chip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pending-chip-out {
+  to {
+    opacity: 0;
+  }
 }
 
 /* build ticket 19 acceptance criterion: rendered in the failure accent

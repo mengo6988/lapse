@@ -32,6 +32,13 @@
   animation: log-toast-in var(--duration-fade) var(--ease-standard);
 }
 
+/* leaves the way it came — LogToast.tsx keeps the node mounted for
+   EXIT_DURATION_MS (src/client/shell/useExitTransition.ts) while this
+   plays; declared after .log-toast so the --out animation wins. */
+.log-toast--out {
+  animation: log-toast-out var(--duration-fade) var(--ease-standard) forwards;
+}
+
 @keyframes log-toast-in {
   from {
     transform: translateX(-50%) translateY(16px);
@@ -40,6 +47,13 @@
   to {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes log-toast-out {
+  to {
+    transform: translateX(-50%) translateY(16px);
+    opacity: 0;
   }
 }
 

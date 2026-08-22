@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { BootstrapPayload } from '../api'
@@ -126,7 +126,11 @@ describe('PendingChip', () => {
       await outboxStore.setItems([])
     })
 
-    expect(screen.queryByRole('button')).toBeNull()
-    expect(screen.queryByRole('dialog')).toBeNull()
+    // chip and sheet play a 200ms exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts), so removal is awaited.
+    await waitFor(() => {
+      expect(screen.queryByRole('button')).toBeNull()
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
   })
 })

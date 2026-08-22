@@ -7,6 +7,7 @@ import type { BootstrapPayload, Category, Entry, Tracker } from '../api'
 import { session } from '../auth/session'
 import { logSheetStore } from '../log/logSheetStore'
 import { logWindowStore } from '../log/logWindowStore'
+import { EXIT_DURATION_MS } from '../shell/useExitTransition'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { ListRoute } from './ListRoute'
 
@@ -337,6 +338,12 @@ describe('ListRoute tap-to-log (build ticket 12)', () => {
       await vi.advanceTimersByTimeAsync(0)
     })
 
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
+    })
+
     expect(row.textContent).toContain('74d')
     expect(row.className).toContain('list-row--overdue')
     expect(screen.queryByRole('status')).toBeNull()
@@ -371,6 +378,12 @@ describe('ListRoute tap-to-log (build ticket 12)', () => {
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
     })
 
     expect(screen.queryByRole('status')).toBeNull()
@@ -430,6 +443,12 @@ describe('ListRoute long-press log sheet (build ticket 13)', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'log' }))
       await vi.advanceTimersByTimeAsync(0)
+    })
+
+    // the toast/sheet lingers for its exit fade before unmounting
+    // (src/client/shell/useExitTransition.ts) — play it out.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXIT_DURATION_MS)
     })
 
     expect(screen.queryByRole('dialog')).toBeNull()

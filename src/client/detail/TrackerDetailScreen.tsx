@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Category, Entry, Tracker } from '../api'
+import { useExitTransition } from '../shell/useExitTransition'
 import { openEditTrackerSheet } from '../tracker'
 import './detail.css'
 import { EntryEditSheet } from './EntryEditSheet'
@@ -40,6 +41,7 @@ function BackIcon() {
 export function TrackerDetailScreen({ tracker, categories, now }: TrackerDetailScreenProps) {
   const navigate = useNavigate()
   const [editing, setEditing] = useState<EditingEntry | null>(null)
+  const editSheet = useExitTransition(editing)
   const entriesQuery = useTrackerEntries(tracker.id)
   const loadedEntries = entriesQuery.data ? entriesQuery.data.pages.flatMap((page) => page.entries) : []
   const category = categories.find((c) => c.id === tracker.categoryId) ?? null
@@ -67,8 +69,14 @@ export function TrackerDetailScreen({ tracker, categories, now }: TrackerDetailS
 
       <EntryHistoryList trackerId={tracker.id} tracker={tracker} now={now} onOpenEntry={handleOpenEntry} />
 
-      {editing && (
-        <EntryEditSheet entry={editing.entry} trackerId={tracker.id} onClose={() => setEditing(null)} openedFrom={editing.openedFrom} />
+      {editSheet.value && (
+        <EntryEditSheet
+          entry={editSheet.value.entry}
+          trackerId={tracker.id}
+          onClose={() => setEditing(null)}
+          openedFrom={editSheet.value.openedFrom}
+          closing={editSheet.closing}
+        />
       )}
     </section>
   )

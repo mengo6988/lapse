@@ -14,10 +14,12 @@ interface TrackerSheetProps {
   title: string
   onClose: () => void
   containerRef: RefObject<HTMLDivElement>
+  /** true while the host plays the exit animation — see src/client/shell/useExitTransition.ts. */
+  closing?: boolean
   children: ReactNode
 }
 
-export function TrackerSheet({ title, onClose, containerRef, children }: TrackerSheetProps) {
+export function TrackerSheet({ title, onClose, containerRef, closing = false, children }: TrackerSheetProps) {
   const dragStartY = useRef<number | null>(null)
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -37,7 +39,14 @@ export function TrackerSheet({ title, onClose, containerRef, children }: Tracker
   }
 
   return (
-    <div className="tracker-sheet" role="dialog" aria-modal="true" aria-label={title} ref={containerRef} tabIndex={-1}>
+    <div
+      className={closing ? 'tracker-sheet tracker-sheet--closing' : 'tracker-sheet'}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      ref={containerRef}
+      tabIndex={-1}
+    >
       <div
         className="tracker-sheet__grabber"
         aria-hidden="true"

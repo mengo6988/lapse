@@ -1,3 +1,4 @@
+import { useExitTransition } from '../shell/useExitTransition'
 import { useLogWindowState } from './logWindowStore'
 
 /**
@@ -12,14 +13,17 @@ import { useLogWindowState } from './logWindowStore'
  */
 export function LogToast() {
   const state = useLogWindowState()
+  const { value, closing } = useExitTransition(state.kind === 'closed' ? null : state)
 
-  if (state.kind === 'closed') return null
+  if (value === null) return null
 
   return (
-    <div className="log-toast" role="status" aria-live="polite">
-      <span className="log-toast__message">{state.toastMessage}</span>
-      {state.kind === 'open' && (
-        <button type="button" className="log-toast__undo" onClick={state.onUndo}>
+    <div className={closing ? 'log-toast log-toast--out' : 'log-toast'} role="status" aria-live="polite">
+      <span className="log-toast__message">{value.toastMessage}</span>
+      {/* hidden the moment the store closes, not when the fade ends — the
+          undo window has expired by then and the latched onUndo is stale. */}
+      {value.kind === 'open' && !closing && (
+        <button type="button" className="log-toast__undo" onClick={value.onUndo}>
           undo
         </button>
       )}

@@ -28,6 +28,8 @@ export interface EntryEditSheetProps {
   onClose: () => void
   /** captured by the caller at the moment the sheet was opened, e.g. the row button that triggered it — see useFocusTrap's doc comment for why this can't be read here. */
   openedFrom?: HTMLElement | null
+  /** true while the caller plays the exit animation — see src/client/shell/useExitTransition.ts. */
+  closing?: boolean
 }
 
 function isoMinusMs(ms: number): string {
@@ -36,7 +38,7 @@ function isoMinusMs(ms: number): string {
 
 const DURATION_CHIPS = [15, 30, 60] as const
 
-export function EntryEditSheet({ entry, trackerId, onClose, openedFrom }: EntryEditSheetProps) {
+export function EntryEditSheet({ entry, trackerId, onClose, openedFrom, closing = false }: EntryEditSheetProps) {
   const [occurredAtLocal, setOccurredAtLocal] = useState(toDatetimeLocalValue(entry.occurredAt))
   const [durationMinutes, setDurationMinutes] = useState(entry.durationMinutes != null ? String(entry.durationMinutes) : '')
   const [note, setNote] = useState(entry.note ?? '')
@@ -93,8 +95,8 @@ export function EntryEditSheet({ entry, trackerId, onClose, openedFrom }: EntryE
 
   return (
     <>
-      <div className="tracker-sheet-scrim" onClick={onClose} />
-      <TrackerSheet title="edit entry" onClose={onClose} containerRef={containerRef}>
+      <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onClose} />
+      <TrackerSheet title="edit entry" onClose={onClose} containerRef={containerRef} closing={closing}>
         <form className="entry-edit" onSubmit={handleSave}>
           <div className="entry-edit__field">
             <label htmlFor="entry-edit-time" className="entry-edit__label">
