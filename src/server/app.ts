@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { clearSession, issueSession, matches, requireSession } from './auth.js'
@@ -16,6 +17,8 @@ export type AppDeps = {
 
 const loginSchema = z.object({ password: z.string().min(1) })
 
+const LOGIN_BODY_LIMIT_BYTES = 2 * 1024
+
 /**
  * The API surface, built around injected dependencies so integration tests can
  * hand it an in-memory database and drive it through `app.request()`.
@@ -28,13 +31,26 @@ export function createApp({ db, password }: AppDeps) {
 
   // Rate limited before validation: an attempt counts whether or not the
   // body is well-formed (ADR-0003 amendment — 10 attempts per 15 minutes).
-  app.post('/api/auth/login', loginRateLimit(), zValidator('json', loginSchema), (c) => {
-    if (!matches(c.req.valid('json').password, password)) {
-      return c.json({ error: 'wrong password' }, 401)
-    }
-    issueSession(c, password)
-    return c.json({ ok: true })
-  })
+  //
+  // Size-capped ahead of both, because this is the one write anyone on the
+  // internet can reach. `zValidator` reads the whole body into memory before
+  // it can reject anything, and lapse is a single un-clustered Node process
+  // (docs/tech-stack.md § Ops) — so without a cap, one oversized POST is
+  // enough to take the app down for its actual user. A password is a few
+  // dozen bytes; 2KB is already generous.
+  app.post(
+    '/api/auth/login',
+    bodyLimit({ maxSize: LOGIN_BODY_LIMIT_BYTES, onError: (c) => c.json({ error: 'payload too large' }, 413) }),
+    loginRateLimit(),
+    zValidator('json', loginSchema),
+    (c) => {
+      if (!matches(c.req.valid('json').password, password)) {
+        return c.json({ error: 'wrong password' }, 401)
+      }
+      issueSession(c, password)
+      return c.json({ ok: true })
+    },
+  )
 
   // Unauthenticated, like login: a logout must always succeed, even against
   // a missing or already-stale cookie, so the client is never blocked from

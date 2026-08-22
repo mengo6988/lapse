@@ -45,6 +45,8 @@ export type FixedWindowLimiterOptions = {
 
 export type FixedWindowLimiter = {
   attempt: (key: string) => boolean
+  /** live window count — the only way to observe that expired entries are dropped. */
+  size: () => number
 }
 
 type WindowState = {
@@ -71,6 +73,15 @@ export function createFixedWindowLimiter({
 
     if (!existing || current - existing.windowStart >= windowMs) {
       hits.set(key, { count: 1, windowStart: current })
+      // Every distinct source address that ever touches the login route
+      // leaves a Map entry, and a public host gets scanned continuously —
+      // so a process that stays up for months (restart: unless-stopped)
+      // accumulates them forever unless something drops the expired ones.
+      // Sweeping here rather than on a timer keeps the limiter a pure
+      // function of its `now`, with no interval to own or shut down: the
+      // sweep costs one pass over a Map that this same line is the only
+      // thing that grows.
+      evictExpired(current)
       return true
     }
 
@@ -82,7 +93,14 @@ export function createFixedWindowLimiter({
     return true
   }
 
-  return { attempt }
+  /** drops every window that has already elapsed — they compare identical to absent. */
+  function evictExpired(current: number): void {
+    for (const [key, state] of hits) {
+      if (current - state.windowStart >= windowMs) hits.delete(key)
+    }
+  }
+
+  return { attempt, size: () => hits.size }
 }
 
 /**

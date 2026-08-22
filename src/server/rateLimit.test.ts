@@ -81,3 +81,43 @@ describe('createFixedWindowLimiter', () => {
     expect(limiter.attempt('3.3.3.3')).toBe(false)
   })
 })
+
+describe('window eviction', () => {
+  it('drops entries whose window has elapsed, so a scanned public host does not grow a Map forever', () => {
+    let clock = 0
+    const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 10, now: () => clock })
+
+    for (let i = 0; i < 50; i++) limiter.attempt(`scanner-${i}`)
+    expect(limiter.size()).toBe(50)
+
+    clock += 1000
+    limiter.attempt('someone-else')
+
+    // the 50 expired windows are gone; only the address that just knocked remains.
+    expect(limiter.size()).toBe(1)
+  })
+
+  it('keeps windows that are still open', () => {
+    let clock = 0
+    const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 10, now: () => clock })
+
+    limiter.attempt('a')
+    clock += 999
+    limiter.attempt('b')
+
+    expect(limiter.size()).toBe(2)
+  })
+
+  it('still blocks an address that has spent its window, even after a sweep', () => {
+    let clock = 0
+    const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 2, now: () => clock })
+
+    expect(limiter.attempt('attacker')).toBe(true)
+    expect(limiter.attempt('attacker')).toBe(true)
+    expect(limiter.attempt('attacker')).toBe(false)
+
+    clock += 500
+    limiter.attempt('bystander') // sweeps; attacker's window is still open
+    expect(limiter.attempt('attacker')).toBe(false)
+  })
+})

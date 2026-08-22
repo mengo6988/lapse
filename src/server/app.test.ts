@@ -50,6 +50,17 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('refuses an oversized body before reading it — one process, anyone can reach this route', async () => {
+    const body = JSON.stringify({ password: 'x'.repeat(4096) })
+    const res = await testApp().request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(body.length) },
+      body,
+    })
+
+    expect(res.status).toBe(413)
+  })
 })
 
 describe('POST /api/auth/logout', () => {
