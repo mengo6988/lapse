@@ -13,22 +13,25 @@ There are three ways to run lapse, depending on what you're doing.
 ### 1. Local development
 
 ```bash
-npm install
-LAPSE_PASSWORD=devpassword npm run dev
+corepack enable   # once per machine — pins pnpm to the version in package.json
+pnpm install
+LAPSE_PASSWORD=devpassword pnpm dev
 ```
 
-`npm run dev` starts the Hono server (`dev:server`, `tsx watch src/server/index.ts`) and the Vite dev server (`dev:client`) together. The app is served by Vite at `http://localhost:5173`, which proxies `/api/*` requests to the server on `:3000`. `LAPSE_PASSWORD` has no default and isn't read from any `.env` file for this path (there's no dotenv loading in `dev:server`) — the server exits immediately on boot if it's unset, so export it or prefix the command as above. Any non-empty value works locally.
+pnpm is the package manager here, pinned by the `packageManager` field. Two settings in `package.json` matter on a fresh clone: `pnpm.onlyBuiltDependencies` allows `better-sqlite3` and `esbuild` to run their install scripts, which pnpm 10 blocks by default, and `node-gyp` is a devDependency so `better-sqlite3` can compile from source on a Node version with no prebuilt binary. Without the first, the server suite fails at import with `Could not locate the bindings file`.
+
+`pnpm dev` starts the Hono server (`dev:server`, `tsx watch src/server/index.ts`) and the Vite dev server (`dev:client`) together. The app is served by Vite at `http://localhost:5173`, which proxies `/api/*` requests to the server on `:3000`. `LAPSE_PASSWORD` has no default and isn't read from any `.env` file for this path (there's no dotenv loading in `dev:server`) — the server exits immediately on boot if it's unset, so export it or prefix the command as above. Any non-empty value works locally.
 
 The session cookie is set with `Secure`, which normally requires HTTPS — but browsers treat `localhost` as a secure context regardless of scheme, so logging in at `http://localhost:5173` still works.
 
 ```bash
-npm test              # vitest run — client (jsdom) + server (node) projects
-npm run coverage      # vitest run --coverage — fails under the 80% threshold
-npm run typecheck     # tsc --noEmit, client and server configs
-npm run e2e           # playwright test — smoke journeys against the built app
+pnpm test             # vitest run — client (jsdom) + server (node) projects
+pnpm coverage         # vitest run --coverage — fails under the 80% threshold
+pnpm typecheck        # tsc --noEmit, client and server configs
+pnpm e2e              # playwright test — smoke journeys against the built app
 ```
 
-`npm run e2e` is not part of the unit-test loop: it builds the app, starts the real server on a throwaway SQLite database, and drives three journeys through Chromium at a phone viewport (see `playwright.config.ts` and `e2e/`). It needs the browser installed once, with `npx playwright install chromium`.
+`pnpm e2e` is not part of the unit-test loop: it builds the app, starts the real server on a throwaway SQLite database, and drives three journeys through Chromium at a phone viewport (see `playwright.config.ts` and `e2e/`). It needs the browser installed once, with `pnpm exec playwright install chromium`.
 
 ### 2. Local Docker (testing the real container)
 

@@ -18,7 +18,7 @@ From the repo directory on the VPS:
 git pull && docker compose up -d --build
 ```
 
-There is no registry and no CI publish step — the VPS builds the image itself from the checked-out source. Every deploy, including the first one, is this same command.
+There is no registry and no CI publish step — the VPS builds the image itself from the checked-out source. Every deploy, including the first one, is this same command. The host needs Docker and nothing else: Node and pnpm exist only inside the build stage, which enables pnpm through Corepack at the version pinned in `package.json`.
 
 ## Verifying it worked
 

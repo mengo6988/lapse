@@ -11,11 +11,17 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
-RUN npm ci
+# Corepack ships with Node 22 and reads the pnpm version from package.json's
+# "packageManager" field, so the version is pinned in one place. The prompt
+# would otherwise block the non-interactive build on first download.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
@@ -25,8 +31,15 @@ ENV NODE_ENV=production
 # into the container. /data matches the volume mounts in both compose files.
 ENV DATA_DIR=/data
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+
+# No build toolchain in this stage: better-sqlite3 resolves a prebuilt binary
+# for linux/node 22 here. package.json's "pnpm.onlyBuiltDependencies" is what
+# lets its install script run at all — pnpm 10 blocks dependency scripts by
+# default, and a silently unbuilt binding fails at boot, not at build.
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 
 COPY --from=build /app/dist ./dist
 # Migrations run on boot and are read from ./drizzle (see MIGRATIONS_FOLDER

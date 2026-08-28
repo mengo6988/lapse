@@ -47,7 +47,7 @@ Silent auto-update, **no prompt UI**:
 
 Global rules apply: TDD (tests first), 80% minimum coverage, unit + integration + E2E.
 
-- **Runner**: Vitest, single config with two projects — `client` (jsdom) + `server` (node). One `npm test` runs both; one merged coverage report. Deps: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`, `jsdom`, `fake-indexeddb`, `@playwright/test`.
+- **Runner**: Vitest, single config with two projects — `client` (jsdom) + `server` (node). One `pnpm test` runs both; one merged coverage report. Deps: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`, `jsdom`, `fake-indexeddb`, `@playwright/test`.
 - **Unit (client)**: urgency ratio, sorting, observed interval, and threshold-suggestion logic live in pure modules and carry most coverage as plain unit tests. Component tests (Testing Library + jsdom) stay thin: wiring only — tap logs, undo toast, category chips filter. No Vitest browser mode.
 - **Unit (outbox)**: the hand-rolled outbox is the main risk surface — full unit coverage with `fake-indexeddb` + stubbed `fetch`: drain order, backoff/jitter, 4xx dead-letter, undo paths, rehydration overlay. The service worker itself is vite-plugin-pwa output and is not tested; SW registration glue is excluded from coverage.
 - **Integration (API)**: Hono `app.request()` (in-process, no HTTP server) against better-sqlite3 `:memory:` with Drizzle migrations applied in suite setup; fresh DB per test file. Covers routes, Zod validation, entry idempotency, and the occurredAt clamp.
@@ -64,7 +64,8 @@ Global rules apply: TDD (tests first), 80% minimum coverage, unit + integration 
 ### Docker image
 
 - Multi-stage, `node:22-bookworm-slim` for **both** stages (pinned explicitly — `node:22-slim` is an alias that will drift to trixie). Build stage installs `python3 make g++` only as a prebuild fallback for better-sqlite3; never copy host-compiled `node_modules` in.
-- Runtime stage: `npm ci --omit=dev`, `USER node`. No numeric size budget — multi-stage + omit-dev is the budget.
+- Package manager is pnpm, pinned by `packageManager` in `package.json` and enabled in both stages with `corepack enable`. pnpm 10 blocks dependency install scripts by default, so `pnpm.onlyBuiltDependencies` lists `better-sqlite3` and `esbuild`; without it the native binding is silently missing and the container fails at boot rather than at build.
+- Runtime stage: `pnpm install --prod --frozen-lockfile`, `USER node`. No numeric size budget — multi-stage + prod-only install is the budget.
 - `HEALTHCHECK --interval=30s` via `node -e "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"` (slim image has no curl).
 
 ### Boot sequence
