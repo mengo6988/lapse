@@ -11,6 +11,18 @@ import { useBootstrapQuery } from '../query/useBootstrap'
 import './detail.css'
 import { TrackerDetailScreen } from './TrackerDetailScreen'
 
+// Mirrors TrackerDetailScreen's local BackIcon (not exported from there, and
+// this ticket's fence doesn't cover changing that file) — matches this
+// codebase's convention of a small per-directory icon (src/client/archived/icons.tsx,
+// src/client/shell/icons.tsx) over a shared import.
+function BackIcon() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} aria-hidden="true">
+      <polyline points="14 5 7 12 14 19" />
+    </svg>
+  )
+}
+
 export function TrackerDetailRoute() {
   const { trackerId } = useParams<{ trackerId: string }>()
   const navigate = useNavigate()
@@ -26,8 +38,8 @@ export function TrackerDetailRoute() {
     return (
       <section className="detail-route">
         <p className="detail-not-found">tracker not found</p>
-        <button type="button" className="detail-header__back" onClick={() => navigate('/list')}>
-          back to list
+        <button type="button" className="detail-header__back" aria-label="back" onClick={() => navigate('/list')}>
+          <BackIcon />
         </button>
       </section>
     )

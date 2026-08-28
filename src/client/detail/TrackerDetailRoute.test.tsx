@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload } from '../api'
 import { bootstrapQueryKey } from '../query/useBootstrap'
@@ -13,6 +14,11 @@ const payload: BootstrapPayload = {
   ],
 }
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname}</div>
+}
+
 function renderRoute(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(bootstrapQueryKey, payload)
@@ -21,7 +27,9 @@ function renderRoute(path: string) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/tracker/:trackerId" element={<TrackerDetailRoute />} />
+          <Route path="/list" element={<p>list</p>} />
         </Routes>
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -45,6 +53,16 @@ describe('TrackerDetailRoute', () => {
     renderRoute('/tracker/ghost')
 
     expect(screen.getByText('tracker not found')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'back' })).toBeTruthy()
+  })
+
+  it('navigates back to the list when the not-found back button is clicked', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ entries: [], nextCursor: null }) }))
+    renderRoute('/tracker/ghost')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'back' }))
+
+    expect(screen.getByTestId('location').textContent).toBe('/list')
   })
 })

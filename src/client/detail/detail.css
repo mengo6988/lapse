@@ -250,6 +250,14 @@
   color: var(--color-text-secondary);
 }
 
+.detail-history__error {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
+}
+
 .detail-history__sentinel {
   height: 1px;
 }

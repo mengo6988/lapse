@@ -111,4 +111,16 @@ describe('EntryHistoryList', () => {
 
     expect(await screen.findByText('no entries yet')).toBeTruthy()
   })
+
+  it('shows a distinct error state, not the muted empty-state styling, when the history fetch fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: 'boom' }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderList()
+
+    const message = await screen.findByText("couldn't load history — try again")
+    expect(message.className).toBe('detail-history__error')
+    expect(message.className).not.toBe('detail-not-found')
+    expect(message.className).not.toBe('detail-empty')
+  })
 })

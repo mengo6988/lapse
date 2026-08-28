@@ -39,7 +39,7 @@ export function EntryHistoryList({ trackerId, tracker, now, onOpenEntry }: Entry
   }
 
   if (query.status === 'error') {
-    return <p className="detail-not-found">couldn&apos;t load history — try again</p>
+    return <p className="detail-history__error">couldn&apos;t load history — try again</p>
   }
 
   const entries = query.data.pages.flatMap((page) => page.entries)
