@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBootstrapQuery } from '../query/useBootstrap'
+import { useExitTransition } from '../shell/useExitTransition'
 import './archived.css'
 import { ArchivedTrackerRow } from './ArchivedTrackerRow'
 import { HardDeleteDialog } from './HardDeleteDialog'
@@ -33,6 +34,9 @@ export function ArchivedRoute() {
   const navigate = useNavigate()
   const { data } = useBootstrapQuery()
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null)
+  // the request clears instantly on cancel/confirm; the latch keeps the
+  // dialog mounted through its exit fade — see useExitTransition.ts.
+  const { value: deleteState, closing: deleteClosing } = useExitTransition(deleteRequest)
 
   const now = new Date()
   const archivedTrackers = (data?.trackers ?? [])
@@ -70,13 +74,14 @@ export function ArchivedRoute() {
         </ul>
       )}
 
-      {deleteRequest && (
+      {deleteState && (
         <HardDeleteDialog
-          trackerId={deleteRequest.trackerId}
-          trackerName={deleteRequest.trackerName}
-          restoreFocusTo={deleteRequest.openedFrom}
+          trackerId={deleteState.trackerId}
+          trackerName={deleteState.trackerName}
+          restoreFocusTo={deleteState.openedFrom}
           onCancel={() => setDeleteRequest(null)}
           onDeleted={() => setDeleteRequest(null)}
+          closing={deleteClosing}
         />
       )}
     </section>

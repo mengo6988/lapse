@@ -19,6 +19,8 @@ interface HardDeleteDialogProps {
   restoreFocusTo: HTMLElement | null
   onCancel: () => void
   onDeleted: () => void
+  /** true while the caller plays the exit animation — see src/client/shell/useExitTransition.ts. */
+  closing?: boolean
 }
 
 function entryCountLabel(count: number): string {
@@ -27,7 +29,7 @@ function entryCountLabel(count: number): string {
   return `${count} entries`
 }
 
-export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCancel, onDeleted }: HardDeleteDialogProps) {
+export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCancel, onDeleted, closing = false }: HardDeleteDialogProps) {
   const containerRef = useFocusTrap<HTMLDivElement>(true, onCancel, restoreFocusTo)
   const countQuery = useEntryCountQuery(trackerId, true)
   const hardDelete = useHardDeleteTracker()
@@ -40,9 +42,9 @@ export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCan
 
   return (
     <>
-      <div className="archived-dialog-scrim" onClick={onCancel} />
+      <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onCancel} />
       <div
-        className="archived-dialog"
+        className={closing ? 'confirm-dialog confirm-dialog--closing' : 'confirm-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={`delete ${trackerName}`}

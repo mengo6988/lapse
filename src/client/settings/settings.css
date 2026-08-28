@@ -161,34 +161,11 @@
 
 /* ---------- delete-category dialog (mirrors src/client/archived/
    archived.css's hard-delete dialog, softer confirm color since deleting a
-   Category doesn't destroy any Tracker) ---------- */
-.settings-dialog-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-scrim);
-  background: rgb(0 0 0 / 0.5);
-}
-
-.settings-dialog {
-  position: fixed;
-  left: var(--space-8);
-  right: var(--space-8);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: var(--z-sheet);
-  background: var(--color-surface-app);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.settings-dialog:focus {
-  outline: none;
-}
-
+   Category doesn't destroy any Tracker). Panel chrome (position, background,
+   animation) lives in the shared .confirm-dialog class
+   (src/client/tracker/trackerSheet.css) — the scrim reuses
+   .tracker-sheet-scrim from the same file. Only this dialog's own
+   copy/error/action rules stay here. ---------- */
 .settings-dialog__copy {
   margin: 0;
   font-family: var(--font-serif);

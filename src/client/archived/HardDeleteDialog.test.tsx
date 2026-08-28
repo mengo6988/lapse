@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { EXIT_DURATION_MS, useExitTransition } from '../shell/useExitTransition'
 import { HardDeleteDialog } from './HardDeleteDialog'
 
 function renderDialog(props: Partial<ComponentProps<typeof HardDeleteDialog>> = {}) {
@@ -111,6 +112,49 @@ describe('HardDeleteDialog', () => {
 
     await waitFor(() => expect(screen.getByText("couldn't check entry count — try again")).toBeTruthy())
     expect(screen.getByRole('button', { name: 'retry' })).toBeTruthy()
+  })
+
+  it('stays mounted through the cancel exit fade, then unmounts once it completes', async () => {
+    // mirrors how ArchivedRoute.tsx wires this dialog in production: the
+    // request clears instantly on cancel, and useExitTransition latches the
+    // dialog mounted (with `closing`) through its fade — see
+    // src/client/shell/useExitTransition.ts.
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      const { value, closing } = useExitTransition(open ? true : null)
+      if (!value) return null
+      return (
+        <HardDeleteDialog
+          trackerId="tracker-1"
+          trackerName="ancient chore"
+          restoreFocusTo={null}
+          onCancel={() => setOpen(false)}
+          onDeleted={() => setOpen(false)}
+          closing={closing}
+        />
+      )
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ entries: [], nextCursor: null }) }))
+    vi.useFakeTimers()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>,
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
+    })
+
+    expect(screen.getByRole('dialog').className).toContain('confirm-dialog--closing')
+
+    await act(async () => {
+      vi.advanceTimersByTime(EXIT_DURATION_MS)
+    })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    vi.useRealTimers()
   })
 
   it('shows the server error message when the delete request itself fails', async () => {

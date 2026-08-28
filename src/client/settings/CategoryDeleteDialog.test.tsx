@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { EXIT_DURATION_MS, useExitTransition } from '../shell/useExitTransition'
 import { CategoryDeleteDialog } from './CategoryDeleteDialog'
 
 function renderDialog(props: Partial<ComponentProps<typeof CategoryDeleteDialog>> = {}) {
@@ -62,6 +63,48 @@ describe('CategoryDeleteDialog', () => {
     await user.keyboard('{Escape}')
 
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('stays mounted through the cancel exit fade, then unmounts once it completes', async () => {
+    // mirrors how CategoriesManager.tsx wires this dialog in production:
+    // the request clears instantly on cancel, and useExitTransition latches
+    // the dialog mounted (with `closing`) through its fade — see
+    // src/client/shell/useExitTransition.ts.
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      const { value, closing } = useExitTransition(open ? true : null)
+      if (!value) return null
+      return (
+        <CategoryDeleteDialog
+          categoryId="house"
+          categoryName="house"
+          restoreFocusTo={null}
+          onCancel={() => setOpen(false)}
+          onDeleted={() => setOpen(false)}
+          closing={closing}
+        />
+      )
+    }
+    vi.useFakeTimers()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>,
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
+    })
+
+    expect(screen.getByRole('dialog').className).toContain('confirm-dialog--closing')
+
+    await act(async () => {
+      vi.advanceTimersByTime(EXIT_DURATION_MS)
+    })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    vi.useRealTimers()
   })
 
   it('confirming calls DELETE and then onDeleted', async () => {

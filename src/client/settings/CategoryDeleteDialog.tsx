@@ -21,9 +21,11 @@ interface CategoryDeleteDialogProps {
   restoreFocusTo: HTMLElement | null
   onCancel: () => void
   onDeleted: () => void
+  /** true while the caller plays the exit animation — see src/client/shell/useExitTransition.ts. */
+  closing?: boolean
 }
 
-export function CategoryDeleteDialog({ categoryId, categoryName, restoreFocusTo, onCancel, onDeleted }: CategoryDeleteDialogProps) {
+export function CategoryDeleteDialog({ categoryId, categoryName, restoreFocusTo, onCancel, onDeleted, closing = false }: CategoryDeleteDialogProps) {
   const containerRef = useFocusTrap<HTMLDivElement>(true, onCancel, restoreFocusTo)
   const deleteCategory = useDeleteCategory()
 
@@ -35,9 +37,9 @@ export function CategoryDeleteDialog({ categoryId, categoryName, restoreFocusTo,
 
   return (
     <>
-      <div className="settings-dialog-scrim" onClick={onCancel} />
+      <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onCancel} />
       <div
-        className="settings-dialog"
+        className={closing ? 'confirm-dialog confirm-dialog--closing' : 'confirm-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={`delete ${categoryName}`}

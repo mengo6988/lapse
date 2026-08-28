@@ -7,6 +7,7 @@
  */
 import { useState } from 'react'
 import { useBootstrapQuery } from '../query/useBootstrap'
+import { useExitTransition } from '../shell/useExitTransition'
 import { AddCategoryForm } from './AddCategoryForm'
 import { CategoryDeleteDialog } from './CategoryDeleteDialog'
 import { CategoryRow } from './CategoryRow'
@@ -20,6 +21,9 @@ interface DeleteRequest {
 export function CategoriesManager() {
   const { data } = useBootstrapQuery()
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null)
+  // the request clears instantly on cancel/confirm; the latch keeps the
+  // dialog mounted through its exit fade — see useExitTransition.ts.
+  const { value: deleteState, closing: deleteClosing } = useExitTransition(deleteRequest)
   const categories = data?.categories ?? []
 
   return (
@@ -35,13 +39,14 @@ export function CategoriesManager() {
       </ul>
       <AddCategoryForm />
 
-      {deleteRequest && (
+      {deleteState && (
         <CategoryDeleteDialog
-          categoryId={deleteRequest.categoryId}
-          categoryName={deleteRequest.categoryName}
-          restoreFocusTo={deleteRequest.openedFrom}
+          categoryId={deleteState.categoryId}
+          categoryName={deleteState.categoryName}
+          restoreFocusTo={deleteState.openedFrom}
           onCancel={() => setDeleteRequest(null)}
           onDeleted={() => setDeleteRequest(null)}
+          closing={deleteClosing}
         />
       )}
     </div>

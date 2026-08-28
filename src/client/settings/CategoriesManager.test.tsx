@@ -60,7 +60,9 @@ describe('CategoriesManager', () => {
 
     await user.click(screen.getByRole('button', { name: 'cancel' }))
 
-    expect(screen.queryByRole('dialog')).toBeNull()
+    // the dialog lingers for its exit fade before unmounting — see
+    // src/client/shell/useExitTransition.ts.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(screen.getByDisplayValue('house')).toBeTruthy()
   })
 
