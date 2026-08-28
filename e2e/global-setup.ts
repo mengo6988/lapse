@@ -1,6 +1,6 @@
 /**
  * Wipes the throwaway e2e SQLite directory (data/e2e) so every run of
- * `npm run e2e` boots the real server against an empty database — build
+ * `pnpm e2e` boots the real server against an empty database — build
  * ticket 23's smoke suite is worthless if it can pass on a Tracker some
  * earlier run left behind.
  *

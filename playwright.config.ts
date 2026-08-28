@@ -1,7 +1,7 @@
 /**
  * Build ticket 23's smoke suite: three journeys driven against the actual
- * production build (`npm run build`), served by the real Hono server
- * (`npm start`, src/server/index.ts — no dev server, no mocked API), on a
+ * production build (`pnpm build`), served by the real Hono server
+ * (`pnpm start`, src/server/index.ts — no dev server, no mocked API), on a
  * throwaway SQLite file under data/e2e. This file's only job is wiring
  * those pieces together; the journeys themselves live under e2e/.
  *
@@ -63,7 +63,7 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
 
   webServer: {
-    command: 'npm run build && npm start',
+    command: 'pnpm build && pnpm start',
     url: E2E_BASE_URL,
     // Never reuse a server left over from something else: this suite owns
     // starting and stopping it, on a database it just wiped, every time.
