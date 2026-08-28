@@ -48,11 +48,18 @@
   color: var(--color-text-on-accent);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .swipe-row__action:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+}
+
+/* shared press language (docs/design.md § Motion). Opacity only — the row
+   content it sits behind already animates transform to reveal it. */
+.swipe-row__action:active {
+  opacity: 0.6;
 }
 
 /* ---------- detail screen ---------- */
@@ -76,6 +83,7 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .detail-header__body {
@@ -107,6 +115,13 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.detail-header__back:active,
+.detail-header__edit:active {
+  opacity: 0.6;
 }
 
 .detail-empty,
@@ -200,6 +215,11 @@
   color: var(--color-text-on-accent);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.detail-suggestion__accept:active {
+  opacity: 0.6;
 }
 
 /* ---------- entry history ---------- */
@@ -217,11 +237,17 @@
   border-bottom: 1px solid var(--color-border-hairline);
   text-align: left;
   color: var(--color-text-primary);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .detail-entry:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+}
+
+/* shared press language (docs/design.md § Motion) */
+.detail-entry:active {
+  opacity: 0.6;
 }
 
 .detail-entry__top {
@@ -317,12 +343,18 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .entry-edit__chip--active {
   background: var(--color-accent-primary);
   border-color: var(--color-accent-primary);
   color: var(--color-text-on-accent);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.entry-edit__chip:active {
+  opacity: 0.6;
 }
 
 .entry-edit__error {
@@ -347,6 +379,12 @@
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-size-base);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.entry-edit__save:active {
+  opacity: 0.6;
 }
 
 .entry-edit__save:disabled {
@@ -366,6 +404,7 @@
   color: var(--color-accent-overdue);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .entry-edit__delete-copy {
@@ -388,6 +427,7 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .entry-edit__delete-confirm {
@@ -399,4 +439,12 @@
   color: var(--color-text-on-accent);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.entry-edit__delete-trigger:active,
+.entry-edit__delete-cancel:active,
+.entry-edit__delete-confirm:active {
+  opacity: 0.6;
 }

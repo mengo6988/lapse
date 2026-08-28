@@ -79,11 +79,17 @@
   border-bottom: 1px solid var(--color-border-hairline);
   text-align: left;
   color: var(--color-text-primary);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .activity-entry:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+}
+
+/* shared press language (docs/design.md § Motion) */
+.activity-entry:active {
+  opacity: 0.6;
 }
 
 .activity-entry__body {

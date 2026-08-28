@@ -209,12 +209,18 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .tracker-form__chip--active {
   background: var(--color-accent-primary);
   border-color: var(--color-accent-primary);
   color: var(--color-text-on-accent);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.tracker-form__chip:active {
+  opacity: 0.6;
 }
 
 .tracker-form__custom-threshold {
@@ -240,6 +246,11 @@
   font-size: var(--text-size-sm);
   color: var(--color-text-muted);
   text-align: left;
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.tracker-form__disclosure-trigger:active {
+  opacity: 0.6;
 }
 
 .tracker-form__disclosure-content {
@@ -264,6 +275,16 @@
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.tracker-form__add-variant:active,
+.tracker-form__archive-trigger:active,
+.tracker-form__archive-cancel:active,
+.tracker-form__archive-confirm:active,
+.tracker-form__remove-variant:active {
+  opacity: 0.6;
 }
 
 .tracker-form__add-variant {
@@ -300,11 +321,19 @@
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-size-base);
-  transition: transform var(--duration-press) var(--ease-standard);
+  transition:
+    transform var(--duration-press) var(--ease-standard),
+    opacity var(--duration-press) var(--ease-standard);
 }
 
 .tracker-form__submit:active {
   transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .tracker-form__submit:hover {
+    opacity: 0.92;
+  }
 }
 
 .tracker-form__submit:disabled {

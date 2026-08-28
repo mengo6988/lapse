@@ -54,6 +54,12 @@
   font-family: var(--font-serif);
   font-size: var(--text-size-md);
   color: var(--color-text-primary);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.settings-route__archive-link:active {
+  opacity: 0.6;
 }
 
 /* ---------- categories list ---------- */
@@ -133,6 +139,11 @@
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
   color: var(--color-accent-overdue);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.settings-category-row__delete:active {
+  opacity: 0.6;
 }
 
 /* ---------- add-category form ---------- */
@@ -152,6 +163,12 @@
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
   color: var(--color-text-on-accent);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.settings-add-category__submit:active {
+  opacity: 0.6;
 }
 
 .settings-add-category__submit:disabled {
@@ -193,6 +210,13 @@
   border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: var(--text-size-base);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.settings-dialog__cancel:active,
+.settings-dialog__confirm:active {
+  opacity: 0.6;
 }
 
 .settings-dialog__cancel {
@@ -221,6 +245,12 @@
   font-family: var(--font-mono);
   font-size: var(--text-size-base);
   color: var(--color-text-secondary);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.settings-logout:active {
+  opacity: 0.6;
 }
 
 .settings-logout:disabled {

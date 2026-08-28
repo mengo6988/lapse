@@ -94,6 +94,13 @@
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.archived-row__unarchive:active,
+.archived-row__delete:active {
+  opacity: 0.6;
 }
 
 .archived-row__unarchive {
@@ -137,6 +144,11 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.archived-dialog__retry:active {
+  opacity: 0.6;
 }
 
 .archived-dialog__error {
@@ -159,6 +171,13 @@
   border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: var(--text-size-base);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.archived-dialog__cancel:active,
+.archived-dialog__confirm:active {
+  opacity: 0.6;
 }
 
 .archived-dialog__cancel {

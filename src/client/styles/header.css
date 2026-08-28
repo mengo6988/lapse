@@ -23,8 +23,14 @@
   height: var(--touch-target-min);
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .icon-button:hover {
   color: var(--color-text-primary);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.icon-button:active {
+  opacity: 0.6;
 }

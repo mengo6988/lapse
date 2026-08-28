@@ -24,6 +24,12 @@
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
   animation: pending-chip-in var(--duration-fade) var(--ease-standard);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.pending-chip:active {
+  opacity: 0.6;
 }
 
 /* the fade-out when the queue drains is the quiet "your log landed"
@@ -69,6 +75,12 @@
   color: var(--color-accent-primary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.queued-sheet__retry-all:active {
+  opacity: 0.6;
 }
 
 .queued-sheet__retry-all:disabled {
@@ -146,4 +158,9 @@
   color: var(--color-accent-overdue);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.queued-sheet__discard:active {
+  opacity: 0.6;
 }

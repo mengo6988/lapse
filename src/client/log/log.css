@@ -65,6 +65,12 @@
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.log-toast__undo:active {
+  opacity: 0.6;
 }
 
 /*
@@ -75,12 +81,23 @@
  * native gestures competing with the hold are turned off here. `manipulation`
  * also drops the double-tap-to-zoom delay, which is pure latency on surfaces
  * whose whole job is a fast single tap.
+ *
+ * Shared press language (docs/design.md § Motion): one opacity dip covers
+ * all three surfaces (slipping card, quick-log tile, list row) through this
+ * class, rather than each stylesheet inventing its own :active rule. Opacity
+ * only, not transform — .log-settle below already animates transform on
+ * this same element right after a tap lands.
  */
 .log-pressable {
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+.log-pressable:active {
+  opacity: 0.6;
 }
 
 /* the just-logged row/card/tile eases into its fresh state in place (~340ms spring). */
@@ -156,12 +173,18 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
+  transition: opacity var(--duration-press) var(--ease-standard);
 }
 
 .log-sheet__chip--active {
   background: var(--color-accent-primary);
   border-color: var(--color-accent-primary);
   color: var(--color-text-on-accent);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.log-sheet__chip:active {
+  opacity: 0.6;
 }
 
 .log-sheet__input,
@@ -189,9 +212,17 @@
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-size-base);
-  transition: transform var(--duration-press) var(--ease-standard);
+  transition:
+    transform var(--duration-press) var(--ease-standard),
+    opacity var(--duration-press) var(--ease-standard);
 }
 
 .log-sheet__submit:active {
   transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .log-sheet__submit:hover {
+    opacity: 0.92;
+  }
 }

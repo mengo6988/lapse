@@ -70,11 +70,19 @@
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-size-base);
-  transition: transform var(--duration-press) var(--ease-standard);
+  transition:
+    transform var(--duration-press) var(--ease-standard),
+    opacity var(--duration-press) var(--ease-standard);
 }
 
 .login-form__submit:active {
   transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .login-form__submit:hover {
+    opacity: 0.92;
+  }
 }
 
 .login-form__submit:disabled {

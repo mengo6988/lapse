@@ -23,6 +23,14 @@
   height: 100%;
   min-width: var(--touch-target-min);
   color: var(--color-text-inactive);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion): every tappable control
+   dips on :active by the same opacity/duration/ease, unless it already owns
+   a scale press (the FAB and sheet/login submits, below). */
+.tab-bar__tab:active {
+  opacity: 0.6;
 }
 
 .tab-bar__tab--active {
@@ -56,9 +64,19 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
-  transition: transform var(--duration-press) var(--ease-standard);
+  transition:
+    transform var(--duration-press) var(--ease-standard),
+    opacity var(--duration-press) var(--ease-standard);
 }
 
+/* primary-CTA scale press — matches .login-form__submit/.log-sheet__submit/
+   .tracker-form__submit (the FAB is a CTA too, just round). */
 .fab:active {
-  transform: scale(0.94);
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .fab:hover {
+    opacity: 0.92;
+  }
 }

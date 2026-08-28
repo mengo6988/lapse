@@ -148,6 +148,12 @@
   padding: var(--space-6) 0;
   border-top: 1px solid var(--color-border-hairline);
   color: var(--color-text-deemphasis);
+  transition: opacity var(--duration-press) var(--ease-standard);
+}
+
+/* shared press language (docs/design.md § Motion) */
+.all-items:active {
+  opacity: 0.6;
 }
 
 .all-items__label {

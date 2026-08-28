@@ -50,6 +50,8 @@ Dragging a sheet's grabber down moves the sheet with the finger 1:1, clamped at 
 
 The two confirmation dialogs (hard-delete, category-delete) fade like every other dismissal instead of blinking away: the scrim reuses the sheets' shared fade, and the panel itself fades and scales down slightly (0.96) over `--duration-fade`, both driven by `useExitTransition` so the dialog stays mounted through the exit before unmounting.
 
+Every tappable control — tab, icon button, row, chip, tile, card, dialog action — dips to 60% opacity on `:active`, over `--duration-press` (120ms) with `--ease-standard`. It's one shared rule repeated at each control's own class rather than a single global selector, since there's no shared components stylesheet, but the values are identical everywhere. The FAB and the three primary submit buttons (log sheet, tracker sheet, login) keep a slightly stronger `scale(0.98)` press instead, since a filled CTA reads better shrinking than dimming; those four also get a subtle `opacity: 0.92` hover, gated behind `@media (hover: hover)` so a touch tap never leaves a stuck hover state. `prefers-reduced-motion` collapses both treatments to an instant state change, same as every other transition in the app (src/client/styles/base.css).
+
 ## Branding (settled in branding grill 2026-08-15)
 
 ### Name treatment
