@@ -19,6 +19,10 @@
 
 .list-chip {
   position: relative;
+  /* 5px vertical padding sits off-scale (between --space-1's 4px and
+     --space-2's 6px) — picked to land this pill's rendered height at
+     exactly 28px, the same off-scale-for-a-reason trade home.css makes for
+     its 58px card min-height and 3px accent border. */
   padding: 5px var(--space-5);
   min-height: 28px;
   border-radius: var(--radius-pill);

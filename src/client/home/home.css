@@ -52,7 +52,11 @@
   text-align: left;
   background: var(--color-surface-card);
   border-radius: var(--radius-md);
-  border-left: 3px solid var(--color-text-inactive);
+  /* no fallback color here: selectSlippingRows only ever admits
+     overdue/due-soon rows (plus justLogged's fresh exception —
+     SlippingCard.tsx), so one of the three modifiers below always sets
+     border-left-color and a bare literal here would never be visible. */
+  border-left: 3px solid;
   color: var(--color-text-primary);
 }
 

@@ -39,6 +39,7 @@ Texture: full-screen fractal-noise SVG overlay at 0.045 opacity, pointer-events 
 - Category chips: pill (999px). Active = lavender fill + crust text; inactive = 1px `surface1` border + `overlay2` text.
 - Bottom nav: 72px bar, `base` bg, 1px `surface0` top border, five slots — home, list, center **+** FAB (48px lavender circle, crust glyph, soft shadow), activity (clock), settings (sliders). Active icon `text`, inactive `overlay0`.
 - Header: serif wordmark left; magnifier icon right (`overlay2`), 1.4 stroke. The earlier sliders icon is dropped (prototype ticket 12): it duplicated the tab bar's settings slot and the list's filter chips.
+- Threshold suggestion hint (tracker detail, `.detail-suggestion`): 1px **dashed** lavender border, 8px radius, versus solid borders everywhere else in the app. Deliberate — dashed marks a system-proposed value the user hasn't committed to yet ("provisional hint"), so the border style itself tells you the threshold isn't real until the accept action is tapped.
 
 ### Motion
 

@@ -106,6 +106,15 @@
   --z-scrim: 30;
   --z-sheet: 40;
 
+  /* elevation. plain black at varying opacity — shadow and scrim aren't
+     catppuccin palette colours, they're the same "black, some opacity" in
+     any theme, so they live here rather than in the raw palette above. */
+  --shadow-raised: 0 4px 12px rgb(0 0 0 / 0.35);
+  --shadow-floating:
+    0 2px 4px rgb(0 0 0 / 0.2),
+    0 6px 16px rgb(0 0 0 / 0.3);
+  --color-scrim: rgb(0 0 0 / 0.5);
+
   --duration-press: 120ms;
   --duration-fade: 200ms;
   --duration-settle: 340ms;

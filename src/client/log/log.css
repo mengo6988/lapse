@@ -22,9 +22,7 @@
   background: var(--color-surface-card);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 2px 4px rgb(0 0 0 / 0.2),
-    0 6px 16px rgb(0 0 0 / 0.3);
+  box-shadow: var(--shadow-floating);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
   color: var(--color-text-primary);
@@ -173,7 +171,11 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-size-sm);
-  transition: opacity var(--duration-press) var(--ease-standard);
+  transition:
+    background-color var(--duration-press) var(--ease-standard),
+    border-color var(--duration-press) var(--ease-standard),
+    color var(--duration-press) var(--ease-standard),
+    opacity var(--duration-press) var(--ease-standard);
 }
 
 .log-sheet__chip--active {

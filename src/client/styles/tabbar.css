@@ -40,9 +40,9 @@
 .tab-bar__tab--active::after {
   content: '';
   position: absolute;
-  bottom: 6px;
-  width: 4px;
-  height: 4px;
+  bottom: var(--space-2);
+  width: var(--space-1);
+  height: var(--space-1);
   border-radius: 50%;
   background: var(--color-accent-primary);
 }
@@ -63,7 +63,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+  box-shadow: var(--shadow-raised);
   transition:
     transform var(--duration-press) var(--ease-standard),
     opacity var(--duration-press) var(--ease-standard);
