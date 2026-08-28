@@ -46,6 +46,10 @@ Gentle spring settle (rows/cards easing into place); undo toast slides in like a
 
 Sheets slide up from the bottom edge (340ms, drawer curve `--ease-sheet`) and leave faster than they arrive (200ms) — dismissal reads as release, not choreography. The scrim, the toast, and the pending chip fade out over the same 200ms instead of blinking away; `useExitTransition` (src/client/shell) holds each one mounted while its exit plays, and its timer must match `--duration-fade`.
 
+Dragging a sheet's grabber down moves the sheet with the finger 1:1, clamped at zero so it can't drag upward past rest. Releasing past the existing 60px dismissal threshold hands off to the normal 200ms exit; releasing short of it springs the sheet back to rest over `--duration-press`/`--ease-spring`. Reduced motion drops the follow entirely and keeps the old binary behaviour: nothing moves until the threshold is crossed, then it dismisses directly.
+
+The two confirmation dialogs (hard-delete, category-delete) fade like every other dismissal instead of blinking away: the scrim reuses the sheets' shared fade, and the panel itself fades and scales down slightly (0.96) over `--duration-fade`, both driven by `useExitTransition` so the dialog stays mounted through the exit before unmounting.
+
 ## Branding (settled in branding grill 2026-08-15)
 
 ### Name treatment
