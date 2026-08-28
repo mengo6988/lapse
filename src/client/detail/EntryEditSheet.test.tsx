@@ -111,9 +111,25 @@ describe('EntryEditSheet', () => {
   })
 
   it('clicking the scrim closes the sheet', async () => {
-    const { onClose, container } = renderSheet()
+    const { onClose } = renderSheet()
     const user = userEvent.setup()
-    await user.click(container.querySelector('.tracker-sheet-scrim')!)
+    // portaled to document.body (see EntryEditSheet.tsx), not a descendant
+    // of RTL's own container.
+    await user.click(document.querySelector('.tracker-sheet-scrim')!)
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('marks #app-root inert for as long as the sheet is mounted', () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    const { unmount } = renderSheet()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    unmount()
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 })

@@ -13,7 +13,9 @@
  * here means "move this Entry to now", not "log a new one").
  */
 import { useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { Entry } from '../api'
+import { useInertBackground } from '../shell/useInertBackground'
 import { FieldError } from '../tracker/FieldError'
 import { TrackerApiError } from '../tracker/mutationClient'
 import { TrackerSheet } from '../tracker/TrackerSheet'
@@ -51,6 +53,10 @@ export function EntryEditSheet({ entry, trackerId, onClose, openedFrom, closing 
   const deleteEntry = useDeleteEntry()
 
   const containerRef = useFocusTrap<HTMLDivElement>(true, onClose, openedFrom)
+  // this component is only ever mounted (by TrackerDetailScreen.tsx) for the
+  // sheet's full open + exit-latch lifetime, so "mounted" already is
+  // "active" — see src/client/shell/useInertBackground.ts.
+  useInertBackground(true)
 
   function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -93,7 +99,9 @@ export function EntryEditSheet({ entry, trackerId, onClose, openedFrom, closing 
     )
   }
 
-  return (
+  // portaled to document.body so the sheet lands as a DOM sibling of
+  // #app-root, not a descendant — see useInertBackground.ts's doc comment.
+  return createPortal(
     <>
       <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onClose} />
       <TrackerSheet title="edit entry" onClose={onClose} containerRef={containerRef} closing={closing}>
@@ -216,6 +224,7 @@ export function EntryEditSheet({ entry, trackerId, onClose, openedFrom, closing 
           )}
         </div>
       </TrackerSheet>
-    </>
+    </>,
+    document.body,
   )
 }

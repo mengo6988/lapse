@@ -14,7 +14,9 @@
  * than rendering an empty sheet.
  */
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useBootstrapQuery } from '../query/useBootstrap'
+import { useInertBackground } from '../shell/useInertBackground'
 import { useFocusTrap } from '../tracker/useFocusTrap'
 import { TrackerSheet } from '../tracker/TrackerSheet'
 import { resolveQueuedLabel } from './queuedLabel'
@@ -35,12 +37,18 @@ export function QueuedSheet({ onClose, restoreFocusTo, closing = false }: Queued
   const items = useOutboxItems()
   const { data: bootstrap } = useBootstrapQuery()
   const containerRef = useFocusTrap<HTMLDivElement>(true, onClose, restoreFocusTo)
+  // this component is only ever mounted (by PendingChip.tsx) for the sheet's
+  // full open + exit-latch lifetime, so "mounted" already is "active" — see
+  // src/client/shell/useInertBackground.ts.
+  useInertBackground(true)
 
   useEffect(() => {
     if (items.length === 0) onClose()
   }, [items.length, onClose])
 
-  return (
+  // portaled to document.body so the sheet lands as a DOM sibling of
+  // #app-root, not a descendant — see useInertBackground.ts's doc comment.
+  return createPortal(
     <>
       <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onClose} />
       <TrackerSheet title="queued" onClose={onClose} containerRef={containerRef} closing={closing}>
@@ -90,6 +98,7 @@ export function QueuedSheet({ onClose, restoreFocusTo, closing = false }: Queued
           )}
         </div>
       </TrackerSheet>
-    </>
+    </>,
+    document.body,
   )
 }

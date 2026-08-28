@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -77,12 +77,35 @@ describe('TrackerSheetHost', () => {
   it('clicking the scrim closes the sheet', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => payload }))
     trackerSheetStore.openCreate()
-    const { container } = renderHost()
+    renderHost()
     const user = userEvent.setup()
 
-    await user.click(container.querySelector('.tracker-sheet-scrim')!)
+    // portaled to document.body (see TrackerSheetHost.tsx), not a descendant
+    // of RTL's own container.
+    await user.click(document.querySelector('.tracker-sheet-scrim')!)
 
     expect(trackerSheetStore.read()).toEqual({ mode: 'closed' })
+  })
+
+  it('marks #app-root inert while open, through the exit latch, and clears it once closed', async () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => payload }))
+    trackerSheetStore.openCreate()
+    renderHost()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    trackerSheetStore.close()
+    // store flips closed instantly, but the DOM (and the inert it drives)
+    // latches through the exit animation — see useExitTransition.ts.
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 
   it('closing via the close button also restores focus to the opener', async () => {

@@ -37,7 +37,10 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell">
+    // id read by useInertBackground.ts — the target it makes inert while any
+    // sheet is open. Sheets portal outside this element precisely so they
+    // aren't caught by their own inert.
+    <div className="app-shell" id="app-root">
       <div className="noise-overlay" aria-hidden="true" />
       <Header />
       <main className="app-shell__screen">

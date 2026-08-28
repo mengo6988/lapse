@@ -85,9 +85,11 @@ describe('QueuedSheet', () => {
 
   it('visually distinguishes dead-lettered items from merely-waiting ones', async () => {
     await outboxStore.setItems([item('a', { status: 'dead' }), item('b')])
-    const { container } = renderSheet()
+    renderSheet()
 
-    expect(container.querySelectorAll('.queued-sheet__row--dead').length).toBe(1)
+    // portaled to document.body (see QueuedSheet.tsx), not a descendant of
+    // RTL's own container.
+    expect(document.querySelectorAll('.queued-sheet__row--dead').length).toBe(1)
   })
 
   it('offers retry-all, which revives every dead-lettered item', async () => {
@@ -129,11 +131,28 @@ describe('QueuedSheet', () => {
 
   it('reuses the tracker-sheet chrome — a dialog with a close button and a scrim', async () => {
     await outboxStore.setItems([item('a')])
-    const { container } = renderSheet()
+    renderSheet()
 
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'close' })).toBeTruthy()
-    expect(container.querySelector('.tracker-sheet-scrim')).toBeTruthy()
+    // portaled to document.body (see QueuedSheet.tsx), not a descendant of
+    // RTL's own container.
+    expect(document.querySelector('.tracker-sheet-scrim')).toBeTruthy()
+  })
+
+  it('marks #app-root inert for as long as the sheet is mounted', async () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    await outboxStore.setItems([item('a')])
+    const { unmount } = renderSheet()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    unmount()
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 
   it('calls onClose when the close button is clicked', async () => {

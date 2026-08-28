@@ -115,6 +115,28 @@ describe('PendingChip', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
+  it('marks #app-root inert while the queued sheet is open, through the exit latch, and clears it once closed', async () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    await outboxStore.setItems([item('a')])
+    renderChip()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /1 queued/ }))
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'close' }))
+    // the sheet's DOM latches through the exit fade (useExitTransition.ts)
+    // even though the click already closed it, so inert must too.
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
+  })
+
   it('disappears on its own as soon as the queue drains — no manual dismissal', async () => {
     await outboxStore.setItems([item('a')])
     renderChip()

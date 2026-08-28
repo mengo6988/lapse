@@ -12,7 +12,9 @@
  * freeze/optimistic-write/POST/undo choreography a plain tap gets, per this
  * ticket's acceptance criteria, because it's the same function underneath.
  */
+import { createPortal } from 'react-dom'
 import { useExitTransition } from '../shell/useExitTransition'
+import { useInertBackground } from '../shell/useInertBackground'
 import { LogSheet } from './LogSheet'
 import { logSheetStore, useLogSheetState } from './logSheetStore'
 import { useLogRow, type EntryOverrides } from './useLogRow'
@@ -28,6 +30,9 @@ export function LogSheetHost() {
   // the latch only keeps the DOM around while the exit animation plays.
   const { value: state, closing } = useExitTransition(storeState.mode === 'open' ? storeState : null)
   const { logEntry } = useLogRow()
+  // kept inert through the same window the DOM is latched for — see
+  // src/client/shell/useInertBackground.ts.
+  useInertBackground(state !== null)
 
   if (state === null) return null
 
@@ -39,7 +44,9 @@ export function LogSheetHost() {
     logSheetStore.close()
   }
 
-  return (
+  // portaled to document.body so the sheet lands as a DOM sibling of
+  // #app-root, not a descendant — see useInertBackground.ts's doc comment.
+  return createPortal(
     <>
       <div
         className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'}
@@ -48,6 +55,7 @@ export function LogSheetHost() {
       <TrackerSheet title="log entry" onClose={logSheetStore.close} containerRef={containerRef} closing={closing}>
         <LogSheet now={new Date()} onSubmit={handleSubmit} />
       </TrackerSheet>
-    </>
+    </>,
+    document.body,
   )
 }

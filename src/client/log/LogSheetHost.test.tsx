@@ -92,13 +92,35 @@ describe('LogSheetHost (build ticket 13)', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     logSheetStore.open({ trackerId: 't1', variantId: null })
-    const { container } = renderHost()
+    renderHost()
     const user = userEvent.setup()
 
-    await user.click(container.querySelector('.tracker-sheet-scrim')!)
+    // portaled to document.body (see LogSheetHost.tsx), not a descendant of
+    // RTL's own container.
+    await user.click(document.querySelector('.tracker-sheet-scrim')!)
 
     expect(logSheetStore.read()).toEqual({ mode: 'closed' })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('marks #app-root inert while open, through the exit latch, and clears it once closed', async () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    logSheetStore.open({ trackerId: 't1', variantId: null })
+    renderHost()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    logSheetStore.close()
+    // store flips closed instantly, but the DOM (and the inert it drives)
+    // latches through the exit animation — see useExitTransition.ts.
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 
   it('Escape closes the sheet without logging', async () => {

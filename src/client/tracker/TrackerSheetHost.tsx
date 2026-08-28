@@ -5,8 +5,10 @@
  * only has to flip the store, not know anything about mounting.
  */
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useBootstrapQuery } from '../query/useBootstrap'
 import { useExitTransition } from '../shell/useExitTransition'
+import { useInertBackground } from '../shell/useInertBackground'
 import './trackerSheet.css'
 import { TrackerForm } from './TrackerForm'
 import { TrackerSheet } from './TrackerSheet'
@@ -22,6 +24,9 @@ export function TrackerSheetHost() {
   // the latch only keeps the DOM around while the exit animation plays.
   const { value: state, closing } = useExitTransition(storeState.mode === 'closed' ? null : storeState)
   const { data } = useBootstrapQuery()
+  // kept inert through the same window the DOM is latched for — see
+  // src/client/shell/useInertBackground.ts.
+  useInertBackground(state !== null)
 
   if (state === null) return null
 
@@ -44,7 +49,9 @@ export function TrackerSheetHost() {
     content = <TrackerForm mode="create" categories={categories} onClose={trackerSheetStore.close} />
   }
 
-  return (
+  // portaled to document.body so the sheet lands as a DOM sibling of
+  // #app-root, not a descendant — see useInertBackground.ts's doc comment.
+  return createPortal(
     <>
       <div
         className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'}
@@ -53,6 +60,7 @@ export function TrackerSheetHost() {
       <TrackerSheet title={title} onClose={trackerSheetStore.close} containerRef={containerRef} closing={closing}>
         {content}
       </TrackerSheet>
-    </>
+    </>,
+    document.body,
   )
 }

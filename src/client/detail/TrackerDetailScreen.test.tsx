@@ -100,4 +100,29 @@ describe('TrackerDetailScreen', () => {
 
     expect(screen.getByRole('dialog', { name: 'edit entry' })).toBeTruthy()
   })
+
+  it('marks #app-root inert while the entry edit sheet is open, through the exit latch, and clears it once closed', async () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => noVariantEntriesPage })
+    vi.stubGlobal('fetch', fetchMock)
+    renderScreen({ id: 't1', name: 'x', categoryId: null, thresholdDays: null, archivedAt: null, createdAt: '', latestEntry: null, variants: [] })
+
+    const user = userEvent.setup()
+    const entryButton = await screen.findByRole('button', { name: /14d ago/ })
+    await user.click(entryButton)
+    expect(screen.getByRole('dialog', { name: 'edit entry' })).toBeTruthy()
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'close' }))
+    // store flips closed instantly, but the DOM (and the inert it drives)
+    // latches through the exit animation — see useExitTransition.ts.
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
+  })
 })
