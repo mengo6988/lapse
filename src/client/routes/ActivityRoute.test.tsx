@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload, Tracker } from '../api'
+import { activityEntriesQueryKey } from '../activity/useActivityEntries'
 import { bootstrapQueryKey } from '../query/useBootstrap'
 import { ActivityRoute } from './ActivityRoute'
 
@@ -144,5 +145,63 @@ describe('ActivityRoute', () => {
     renderRoute([tracker()])
 
     await waitFor(() => expect(screen.getByText(/couldn.t load activity/)).toBeTruthy())
+  })
+})
+
+/**
+ * .scratch/audit-fixes/spec.md decision 5 — buildActivityRows drops every Entry whose
+ * Tracker isn't in the bootstrap payload yet, so an Entries page that
+ * resolves before bootstrap does must not read as "nothing logged yet".
+ * Unlike `renderRoute` above, this seeds nothing into the query cache:
+ * `/api/entries` resolves normally while `/api/bootstrap` hangs forever, so
+ * the race the bug depended on is reproduced for real rather than asserted
+ * by inspection.
+ */
+describe('ActivityRoute loading, failed, and empty states (decision 5)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('does not render "nothing logged yet" once Entries have loaded while bootstrap is still pending', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.startsWith('/api/entries')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            entries: [
+              {
+                id: 'e1',
+                trackerId: 't1',
+                variantId: null,
+                occurredAt: new Date().toISOString(),
+                durationMinutes: null,
+                note: null,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            nextCursor: null,
+          }),
+        })
+      }
+      // /api/bootstrap: never resolves — bootstrap stays pending.
+      return new Promise(() => {})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/activity']}>
+          <ActivityRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(queryClient.getQueryState(activityEntriesQueryKey)?.status).toBe('success'))
+
+    expect(screen.queryByText('nothing logged yet')).toBeNull()
+    expect(screen.getByText('loading…')).toBeTruthy()
   })
 })

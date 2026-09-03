@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BootstrapPayload } from '../api'
@@ -126,6 +126,70 @@ describe('HomeRoute', () => {
   it('never renders a search input itself — search lives on the list tab only', () => {
     renderHome({ categories: [], trackers: [] })
     expect(screen.queryByRole('textbox')).toBeNull()
+  })
+})
+
+/**
+ * .scratch/audit-fixes/spec.md decision 5 — loading/failed/empty must not be confused with
+ * each other on a cold start (no persisted cache): "nothing slipping" is an
+ * answer about Trackers that arrived, not a placeholder for Trackers that
+ * haven't. Unlike `renderHome` above, these render without seeding the
+ * query cache at all, so `useBootstrapQuery` runs its real query function
+ * against a stubbed `fetch`.
+ */
+describe('HomeRoute loading, failed, and empty states (decision 5)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function renderUnseeded() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <HomeRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('shows "loading…", not the empty copy, while bootstrap has never resolved', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+    renderUnseeded()
+
+    expect(screen.getByText('loading…')).toBeTruthy()
+    expect(screen.queryByText('nothing slipping')).toBeNull()
+  })
+
+  it('shows the failed-state copy when bootstrap has nothing cached and the request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    renderUnseeded()
+
+    expect(await screen.findByText("couldn't load trackers — try again")).toBeTruthy()
+    expect(screen.queryByText('nothing slipping')).toBeNull()
+  })
+
+  it('keeps showing cached Trackers when a background refetch fails', async () => {
+    const hvac = makeTracker({
+      name: 'change hvac filter',
+      thresholdDays: 60,
+      latestEntry: makeEntry({ occurredAt: isoDaysAgo(74) }),
+    })
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(bootstrapQueryKey, { categories: [], trackers: [hvac] })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <HomeRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(queryClient.getQueryState(bootstrapQueryKey)?.status).toBe('error'))
+    expect(screen.getByText('change hvac filter')).toBeTruthy()
+    expect(screen.queryByText("couldn't load trackers — try again")).toBeNull()
   })
 })
 

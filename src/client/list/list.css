@@ -107,14 +107,23 @@
   opacity: 0.6;
 }
 
-/* ---------- empty state ---------- */
-.list-empty {
+/* ---------- empty, loading and failed states ---------- */
+.list-empty,
+.list-route__loading {
   margin: 0;
   padding: var(--space-7) var(--space-8);
   font-family: var(--font-serif);
   font-style: italic;
   font-size: var(--text-size-md);
   color: var(--color-text-muted);
+}
+
+.list-route__error {
+  margin: 0;
+  padding: var(--space-7) var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  color: var(--color-accent-overdue);
 }
 
 /* ---------- rows ---------- */

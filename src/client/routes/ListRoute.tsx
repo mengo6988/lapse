@@ -17,6 +17,9 @@ import { useBootstrapQuery } from '../query/useBootstrap'
 
 const EMPTY_LIST_MESSAGE = 'nothing here yet — add your first tracker'
 const NO_MATCHES_MESSAGE = 'no matches'
+// shared with HomeRoute.tsx (.scratch/audit-fixes/spec.md decision 5) — both screens read
+// the same bootstrap query and disagree about it for no reason.
+const FAILED_MESSAGE = "couldn't load trackers — try again"
 // mirrors --duration-fade (200ms); prefers-reduced-motion collapses the
 // visible animation via src/client/styles/base.css, this is only how long
 // the class stays applied to let the (collapsed-or-not) animation finish.
@@ -39,9 +42,16 @@ const listRowId = (row: ListRow) => row.key
  * <LogToast/>'s own precedent — ListRowItem opens it directly on long-press
  * (src/client/log/logSheetStore.ts), so this route doesn't wire a callback
  * for it.
+ *
+ * loading/failed/empty (.scratch/audit-fixes/spec.md decision 5): the chips/search row and
+ * the row list only ever render once the bootstrap query has data — see
+ * HomeRoute.tsx's twin of this guard for why `data?.trackers ?? []` alone
+ * can't tell "nothing here yet" apart from "hasn't loaded" or "failed to
+ * load". A failed background refetch leaves `data` set from the prior
+ * fetch, so the ledger keeps rendering it instead of falling back here.
  */
 export function ListRoute() {
-  const { data } = useBootstrapQuery()
+  const { data, status } = useBootstrapQuery()
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -96,6 +106,15 @@ export function ListRoute() {
 
   const isActivelySearching = searchOpen && query.trim() !== ''
   const emptyMessage = isActivelySearching ? NO_MATCHES_MESSAGE : EMPTY_LIST_MESSAGE
+
+  if (!data) {
+    return (
+      <section aria-label="list" className="list-route">
+        {status === 'pending' && <p className="list-route__loading">loading…</p>}
+        {status === 'error' && <p className="list-route__error">{FAILED_MESSAGE}</p>}
+      </section>
+    )
+  }
 
   return (
     <section aria-label="list" className={`list-route${fading ? ' log-resort' : ''}`}>

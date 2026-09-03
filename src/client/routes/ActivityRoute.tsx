@@ -15,6 +15,15 @@
  * Tapping an Entry navigates to `/tracker/:trackerId` — that route already
  * renders the entry history with its edit/delete sheet (build ticket 15) —
  * rather than opening a second edit surface here.
+ *
+ * loading/failed/empty (.scratch/audit-fixes/spec.md decision 5): buildActivityRows drops
+ * every Entry whose Tracker isn't in the bootstrap payload, so this screen
+ * needs both queries settled with data before it can tell "nothing logged
+ * yet" apart from "the entries page beat bootstrap to the finish line". Two
+ * gates in sequence handle that: the entries query gates first (nothing to
+ * build rows from without it), then bootstrap gates before rows are built.
+ * Either gate reuses the same loading/failed copy, since the user can't
+ * tell which request is the slow one and doesn't need to.
  */
 import { useNavigate } from 'react-router-dom'
 import type { ActivityRow } from '../activity/activityRows'
@@ -31,7 +40,7 @@ const ERROR_MESSAGE = "couldn't load activity — try again"
 
 export function ActivityRoute() {
   const navigate = useNavigate()
-  const { data: bootstrap } = useBootstrapQuery()
+  const { data: bootstrap, status: bootstrapStatus } = useBootstrapQuery()
   const entriesQuery = useActivityEntries()
 
   const canLoadMore = entriesQuery.hasNextPage === true && !entriesQuery.isFetchingNextPage
@@ -44,18 +53,32 @@ export function ActivityRoute() {
   }
 
   const now = new Date()
-  const trackers = bootstrap?.trackers ?? []
-  const loadedEntries = entriesQuery.data ? entriesQuery.data.pages.flatMap((page) => page.entries) : []
-  const rows = buildActivityRows(loadedEntries, trackers)
+
+  if (!entriesQuery.data) {
+    return (
+      <section aria-label="activity" className="activity-route">
+        {entriesQuery.status === 'pending' && <p className="activity-route__loading">loading…</p>}
+        {entriesQuery.status === 'error' && <p className="activity-route__error">{ERROR_MESSAGE}</p>}
+      </section>
+    )
+  }
+
+  if (!bootstrap) {
+    return (
+      <section aria-label="activity" className="activity-route">
+        {bootstrapStatus === 'pending' && <p className="activity-route__loading">loading…</p>}
+        {bootstrapStatus === 'error' && <p className="activity-route__error">{ERROR_MESSAGE}</p>}
+      </section>
+    )
+  }
+
+  const loadedEntries = entriesQuery.data.pages.flatMap((page) => page.entries)
+  const rows = buildActivityRows(loadedEntries, bootstrap.trackers)
   const sections = groupActivityRowsByDay(rows, now)
 
   return (
     <section aria-label="activity" className="activity-route">
-      {entriesQuery.status === 'pending' && <p className="activity-route__loading">loading…</p>}
-      {entriesQuery.status === 'error' && <p className="activity-route__error">{ERROR_MESSAGE}</p>}
-      {entriesQuery.status === 'success' && sections.length === 0 && (
-        <p className="activity-route__empty">{EMPTY_MESSAGE}</p>
-      )}
+      {sections.length === 0 && <p className="activity-route__empty">{EMPTY_MESSAGE}</p>}
 
       {sections.length > 0 && (
         <>

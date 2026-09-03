@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -226,12 +226,12 @@ describe('ListRoute', () => {
     renderList()
     expect(screen.getByRole('button', { name: 'all' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'house' })).toBeTruthy()
-    expect(screen.queryByRole('textbox', { name: /search/i })).toBeNull()
+    expect(screen.queryByRole('searchbox', { name: /search/i })).toBeNull()
   })
 
   it('arriving with ?search=open opens the search input, focused, in place of the chips', () => {
     renderList(['/list?search=open'])
-    const input = screen.getByRole('textbox', { name: /search/i })
+    const input = screen.getByRole('searchbox', { name: /search/i })
     expect(document.activeElement).toBe(input)
     expect(screen.queryByRole('button', { name: 'all' })).toBeNull()
   })
@@ -239,7 +239,7 @@ describe('ListRoute', () => {
   it('filters Tracker and Variant names client-side as the user types', async () => {
     renderList(['/list?search=open'])
     const user = userEvent.setup()
-    const input = screen.getByRole('textbox', { name: /search/i })
+    const input = screen.getByRole('searchbox', { name: /search/i })
     await user.type(input, 'volvo')
 
     const rows = screen.getAllByRole('listitem')
@@ -250,7 +250,7 @@ describe('ListRoute', () => {
   it('shows "no matches" when the search filter empties the list', async () => {
     renderList(['/list?search=open'])
     const user = userEvent.setup()
-    const input = screen.getByRole('textbox', { name: /search/i })
+    const input = screen.getByRole('searchbox', { name: /search/i })
     await user.type(input, 'xyz-nonexistent')
 
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
@@ -262,8 +262,69 @@ describe('ListRoute', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'cancel' }))
 
-    expect(screen.queryByRole('textbox', { name: /search/i })).toBeNull()
+    expect(screen.queryByRole('searchbox', { name: /search/i })).toBeNull()
     expect(screen.getByRole('button', { name: 'all' })).toBeTruthy()
+  })
+})
+
+/**
+ * .scratch/audit-fixes/spec.md decision 5 — same rule as HomeRoute.test.tsx's twin block:
+ * "nothing here yet" is an answer about Trackers that arrived, not a
+ * placeholder for Trackers that haven't. These render without seeding the
+ * query cache at all, unlike `renderList` above, so `useBootstrapQuery` runs
+ * its real query function against a stubbed `fetch`.
+ */
+describe('ListRoute loading, failed, and empty states (decision 5)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function renderUnseeded() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ListRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('shows "loading…", not the empty copy, while bootstrap has never resolved', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+    renderUnseeded()
+
+    expect(screen.getByText('loading…')).toBeTruthy()
+    expect(screen.queryByText('nothing here yet — add your first tracker')).toBeNull()
+  })
+
+  it('shows the failed-state copy when bootstrap has nothing cached and the request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    renderUnseeded()
+
+    expect(await screen.findByText("couldn't load trackers — try again")).toBeTruthy()
+    expect(screen.queryByText('nothing here yet — add your first tracker')).toBeNull()
+  })
+
+  it('keeps showing cached Trackers when a background refetch fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(bootstrapQueryKey, {
+      categories: [],
+      trackers: [tracker({ name: 'change hvac filter' })],
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ListRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(queryClient.getQueryState(bootstrapQueryKey)?.status).toBe('error'))
+    expect(screen.getByText('change hvac filter')).toBeTruthy()
+    expect(screen.queryByText("couldn't load trackers — try again")).toBeNull()
   })
 })
 

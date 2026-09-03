@@ -20,6 +20,10 @@ import { useBootstrapQuery } from '../query/useBootstrap'
 // the class stays applied to let the (collapsed-or-not) animation finish.
 const RESORT_FADE_MS = 220
 
+// shared with ListRoute.tsx (.scratch/audit-fixes/spec.md decision 5) — both screens read
+// the same bootstrap query and disagree about it for no reason.
+const FAILED_MESSAGE = "couldn't load trackers — try again"
+
 const homeRowId = (row: ListRow) => row.key
 
 /**
@@ -38,9 +42,18 @@ const homeRowId = (row: ListRow) => row.key
  * navigation exactly like the undo toast does. SlippingCard and
  * QuickLogTile open it directly on long-press (src/client/log/
  * logSheetStore.ts), so this route doesn't wire a callback for it.
+ *
+ * loading/failed/empty (.scratch/audit-fixes/spec.md decision 5): the digest below only
+ * ever renders once the bootstrap query has data, cache-restored or fresh —
+ * a persisted-cache hit skips straight past `pending`. Without that guard,
+ * `data?.trackers ?? []` reads as zero Trackers during the pending window
+ * and after an outright failure alike, so "nothing slipping" would lie
+ * about both. A failed *background* refetch is not this guard's concern:
+ * `data` is still set from the prior fetch, so the digest keeps rendering
+ * it and the failed copy never appears over data that's still good.
  */
 export function HomeRoute() {
-  const { data } = useBootstrapQuery()
+  const { data, status } = useBootstrapQuery()
   const now = new Date()
   const { logEntry } = useLogRow()
   const windowState = useLogWindowState()
@@ -70,6 +83,15 @@ export function HomeRoute() {
 
   function handleTap(row: ListRow) {
     logEntry({ trackerId: row.trackerId, variantId: row.variantId })
+  }
+
+  if (!data) {
+    return (
+      <section aria-label="home" className="home">
+        {status === 'pending' && <p className="home__loading">loading…</p>}
+        {status === 'error' && <p className="home__error">{FAILED_MESSAGE}</p>}
+      </section>
+    )
   }
 
   return (
