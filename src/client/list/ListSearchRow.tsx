@@ -11,6 +11,12 @@ interface ListSearchRowProps {
  * § Features 11 — "on list it expands to an input in place", never an
  * overlay). label is visually hidden; the visible "search" placeholder
  * mirrors the interaction reference (12-home-prototype.html).
+ *
+ * `type="search"` (.scratch/audit-fixes/spec.md decision 8) over `type="text"`: iOS shows
+ * the dedicated search keyboard and a native clear button, so clearing a
+ * filter is one tap instead of a hold-backspace. The accessible role moves
+ * from textbox to searchbox as a result — callers querying this input by
+ * role need to follow.
  */
 export const ListSearchRow = forwardRef<HTMLInputElement, ListSearchRowProps>(function ListSearchRow(
   { query, onQueryChange, onCancel },
@@ -24,7 +30,7 @@ export const ListSearchRow = forwardRef<HTMLInputElement, ListSearchRowProps>(fu
       <input
         id="list-search-input"
         ref={ref}
-        type="text"
+        type="search"
         className="list-search-row__input"
         placeholder="search"
         autoComplete="off"

@@ -30,14 +30,24 @@ export const THRESHOLD_UNITS: readonly { value: ThresholdUnit; label: string }[]
   { value: 'year', label: 'years' },
 ]
 
+/**
+ * The server's cap on `thresholdDays` (`src/server/routes/trackers.ts`:
+ * `z.number().int().min(1).max(3650)`), mirrored here so the custom-input
+ * conversion below can reject an over-cap amount before it ever reaches the
+ * server (.scratch/audit-fixes/spec.md decision 7). A server-side test asserts the two
+ * numbers match, so this can't drift silently.
+ */
+export const THRESHOLD_MAX_DAYS = 3650
+
 /** the preset tier an existing thresholdDays value came from, if any. */
 export function presetMatching(thresholdDays: number | null): ThresholdPreset | undefined {
   if (thresholdDays === null) return undefined
   return THRESHOLD_PRESETS.find((preset) => preset.days === thresholdDays)
 }
 
-/** custom (number + unit) -> whole days, or null for an unusable amount. */
+/** custom (number + unit) -> whole days, or null for an unusable or over-cap amount. */
 export function daysFromCustomInput(amount: number, unit: ThresholdUnit): number | null {
   if (!Number.isFinite(amount) || amount <= 0) return null
-  return Math.round(amount * UNIT_DAYS[unit])
+  const days = Math.round(amount * UNIT_DAYS[unit])
+  return days > THRESHOLD_MAX_DAYS ? null : days
 }

@@ -271,7 +271,7 @@
 
 .detail-entry__meta {
   margin: var(--space-1) 0 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-mono);
   font-size: var(--text-size-sm);
   color: var(--color-text-secondary);
 }

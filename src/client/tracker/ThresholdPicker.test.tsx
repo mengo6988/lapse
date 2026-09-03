@@ -64,4 +64,50 @@ describe('ThresholdPicker', () => {
     render(<ThresholdPicker id="t" value={null} onChange={() => {}} error="too big" />)
     expect(screen.getByText('too big')).toBeTruthy()
   })
+
+  it('shows an inline error and does not call onChange for a custom amount over the ten-year cap', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<ThresholdPicker id="t" value={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'custom' }))
+    await user.selectOptions(screen.getByLabelText('unit'), 'years')
+    // paste, not type — a real keystroke-by-keystroke "11" would commit a
+    // valid "1" (365 days) first; pasting asserts the over-cap amount itself
+    // never reaches onChange.
+    await user.click(screen.getByLabelText('amount'))
+    await user.paste('11')
+
+    expect(screen.getByText('up to 10 years')).toBeTruthy()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('shows the same inline error for a non-positive custom amount (previously silent)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<ThresholdPicker id="t" value={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'custom' }))
+    await user.type(screen.getByLabelText('amount'), '0')
+
+    expect(screen.getByText('up to 10 years')).toBeTruthy()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('clears the over-cap error once the amount is fixed', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<ThresholdPicker id="t" value={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'custom' }))
+    await user.selectOptions(screen.getByLabelText('unit'), 'years')
+    await user.type(screen.getByLabelText('amount'), '11')
+    expect(screen.getByText('up to 10 years')).toBeTruthy()
+
+    await user.clear(screen.getByLabelText('amount'))
+    await user.type(screen.getByLabelText('amount'), '9')
+
+    expect(screen.queryByText('up to 10 years')).toBeNull()
+    expect(onChange).toHaveBeenLastCalledWith(9 * 365)
+  })
 })

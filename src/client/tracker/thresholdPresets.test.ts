@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysFromCustomInput, THRESHOLD_PRESETS, THRESHOLD_UNITS, presetMatching } from './thresholdPresets'
+import { daysFromCustomInput, THRESHOLD_MAX_DAYS, THRESHOLD_PRESETS, THRESHOLD_UNITS, presetMatching } from './thresholdPresets'
 
 describe('THRESHOLD_PRESETS', () => {
   it('is the six tiers from docs/design.md, in days', () => {
@@ -45,6 +45,13 @@ describe('daysFromCustomInput', () => {
     expect(daysFromCustomInput(0, 'day')).toBeNull()
     expect(daysFromCustomInput(-1, 'day')).toBeNull()
     expect(daysFromCustomInput(Number.NaN, 'day')).toBeNull()
+  })
+
+  it('is null when the resulting days exceed the ten-year cap, matching the server', () => {
+    expect(THRESHOLD_MAX_DAYS).toBe(3650)
+    expect(daysFromCustomInput(10, 'year')).toBe(3650) // exactly the cap, still allowed
+    expect(daysFromCustomInput(11, 'year')).toBeNull()
+    expect(daysFromCustomInput(3651, 'day')).toBeNull()
   })
 })
 

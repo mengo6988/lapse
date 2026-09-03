@@ -8,6 +8,9 @@ import { useState } from 'react'
 import { daysFromCustomInput, presetMatching, THRESHOLD_PRESETS, THRESHOLD_UNITS, type ThresholdUnit } from './thresholdPresets'
 import { FieldError } from './FieldError'
 
+/** .scratch/audit-fixes/spec.md decision 7 — the copy table's string for a custom amount that converts to null (over the ten-year cap, or non-positive). */
+const CUSTOM_THRESHOLD_ERROR = 'up to 10 years'
+
 interface ThresholdPickerProps {
   /** unique id prefix — this component can appear many times (one per Variant row). */
   id: string
@@ -26,6 +29,10 @@ export function ThresholdPicker({ id, value, onChange, noneLabel = 'no threshold
   const [customOpen, setCustomOpen] = useState(value !== null && !initialPreset)
   const [customAmount, setCustomAmount] = useState(customOpen ? String(value) : '')
   const [customUnit, setCustomUnit] = useState<ThresholdUnit>('day')
+  // set only by applyCustom below, for an amount that converts to null; a stale server-side
+  // `error` prop keeps rendering underneath until the amount is fixed or the picker moves away
+  // from custom entirely (.scratch/audit-fixes/spec.md decision 7 — this was silently ignored before).
+  const [customError, setCustomError] = useState<string | undefined>()
 
   const matchedPreset = presetMatching(value)
   const errorId = `${id}-error`
@@ -34,11 +41,13 @@ export function ThresholdPicker({ id, value, onChange, noneLabel = 'no threshold
 
   function selectPreset(days: number) {
     setCustomOpen(false)
+    setCustomError(undefined)
     onChange(days)
   }
 
   function selectNone() {
     setCustomOpen(false)
+    setCustomError(undefined)
     onChange(null)
   }
 
@@ -48,6 +57,7 @@ export function ThresholdPicker({ id, value, onChange, noneLabel = 'no threshold
 
   function applyCustom(amount: string, unit: ThresholdUnit) {
     const days = daysFromCustomInput(Number(amount), unit)
+    setCustomError(days === null ? CUSTOM_THRESHOLD_ERROR : undefined)
     if (days !== null) onChange(days)
   }
 
@@ -110,7 +120,7 @@ export function ThresholdPicker({ id, value, onChange, noneLabel = 'no threshold
           </select>
         </div>
       )}
-      <FieldError id={errorId} message={error} />
+      <FieldError id={errorId} message={customError ?? error} />
     </div>
   )
 }

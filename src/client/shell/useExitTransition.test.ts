@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EXIT_DURATION_MS, useExitTransition } from './useExitTransition'
@@ -47,5 +49,18 @@ describe('useExitTransition', () => {
     rerender({ value: 'second' })
     act(() => vi.advanceTimersByTime(EXIT_DURATION_MS))
     expect(result.current).toEqual({ value: 'second', closing: false })
+  })
+})
+
+describe('EXIT_DURATION_MS vs --duration-fade', () => {
+  // no runtime coupling (.scratch/audit-fixes/spec.md decision 8) — the hook keeps its own
+  // constant, this test just fails the moment it and the CSS token disagree.
+  it('matches the fade token every *-out keyframe runs at (src/client/styles/tokens.css)', () => {
+    const tokensPath = join(import.meta.dirname, '../styles/tokens.css')
+    const tokensCss = readFileSync(tokensPath, 'utf8')
+    const match = tokensCss.match(/--duration-fade:\s*(\d+)ms/)
+
+    expect(match).not.toBeNull()
+    expect(Number(match?.[1])).toBe(EXIT_DURATION_MS)
   })
 })
