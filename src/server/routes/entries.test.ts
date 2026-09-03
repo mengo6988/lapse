@@ -139,6 +139,21 @@ describe('POST /api/entries', () => {
     expect(db.select().from(entries).all()).toHaveLength(1)
   })
 
+  it('409s when a replayed id belongs to a different tracker, instead of silently returning that row', async () => {
+    const { db, app, cookie } = await setup()
+    insertTracker(db, { id: 'tracker-a' })
+    insertTracker(db, { id: 'tracker-b' })
+    const first = await postJson(app, '/api/entries', { id: 'entry-x', trackerId: 'tracker-a' }, cookie)
+    expect(first.status).toBe(201)
+
+    const res = await postJson(app, '/api/entries', { id: 'entry-x', trackerId: 'tracker-b' }, cookie)
+    const body = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(body).toEqual({ error: 'id belongs to another tracker' })
+    expect(db.select().from(entries).all()).toHaveLength(1)
+  })
+
   it('clamps a future occurredAt to server-now instead of rejecting it', async () => {
     const { db, app, cookie } = await setup()
     insertTracker(db)

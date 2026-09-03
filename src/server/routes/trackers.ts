@@ -54,6 +54,19 @@ function isForeignKeyViolation(error: unknown): boolean {
   )
 }
 
+// Same shape, for a client-supplied id that collides with an existing row —
+// an outbox replay under a bug, or two Shortcuts runs racing. Without this
+// the insert throws and the caller sees an uncaught 500 instead of a 409 it
+// can act on.
+function isPrimaryKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === 'SQLITE_CONSTRAINT_PRIMARYKEY'
+  )
+}
+
 /**
  * Tracker and Variant routes. Paths are declared relative to the `/api` mount
  * in app.ts (so `/trackers`, `/variants/:id`, ...).
@@ -89,33 +102,40 @@ export function trackerRoutes({ db }: RouteDeps) {
     const now = new Date().toISOString()
     const trackerId = body.id ?? uuidv7()
 
+    // One transaction for the Tracker and its inline Variants: a colliding
+    // Variant id has to roll the Tracker row back too, or the 409 leaves a
+    // half-built Tracker behind and the caller's retry collides on the
+    // Tracker id instead — a create that can never succeed.
     try {
-      db.insert(trackers)
-        .values({
-          id: trackerId,
-          name: body.name,
-          categoryId: body.categoryId ?? null,
-          thresholdDays: body.thresholdDays ?? null,
-          archivedAt: null,
-          createdAt: now,
-        })
-        .run()
+      db.transaction((tx) => {
+        tx.insert(trackers)
+          .values({
+            id: trackerId,
+            name: body.name,
+            categoryId: body.categoryId ?? null,
+            thresholdDays: body.thresholdDays ?? null,
+            archivedAt: null,
+            createdAt: now,
+          })
+          .run()
+
+        for (const variant of body.variants ?? []) {
+          tx.insert(variants)
+            .values({
+              id: variant.id ?? uuidv7(),
+              trackerId,
+              name: variant.name,
+              thresholdDays: variant.thresholdDays ?? null,
+              deletedAt: null,
+              createdAt: now,
+            })
+            .run()
+        }
+      })
     } catch (error) {
       if (isForeignKeyViolation(error)) return c.json({ error: 'invalid categoryId' }, 400)
+      if (isPrimaryKeyViolation(error)) return c.json({ error: 'id already exists' }, 409)
       throw error
-    }
-
-    for (const variant of body.variants ?? []) {
-      db.insert(variants)
-        .values({
-          id: variant.id ?? uuidv7(),
-          trackerId,
-          name: variant.name,
-          thresholdDays: variant.thresholdDays ?? null,
-          deletedAt: null,
-          createdAt: now,
-        })
-        .run()
     }
 
     return c.json(withVariants(findTracker(trackerId)!), 201)
@@ -165,16 +185,21 @@ export function trackerRoutes({ db }: RouteDeps) {
     const body = c.req.valid('json')
     const variantId = body.id ?? uuidv7()
 
-    db.insert(variants)
-      .values({
-        id: variantId,
-        trackerId,
-        name: body.name,
-        thresholdDays: body.thresholdDays ?? null,
-        deletedAt: null,
-        createdAt: new Date().toISOString(),
-      })
-      .run()
+    try {
+      db.insert(variants)
+        .values({
+          id: variantId,
+          trackerId,
+          name: body.name,
+          thresholdDays: body.thresholdDays ?? null,
+          deletedAt: null,
+          createdAt: new Date().toISOString(),
+        })
+        .run()
+    } catch (error) {
+      if (isPrimaryKeyViolation(error)) return c.json({ error: 'id already exists' }, 409)
+      throw error
+    }
 
     return c.json(db.select().from(variants).where(eq(variants.id, variantId)).get()!, 201)
   })

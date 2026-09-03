@@ -148,6 +148,18 @@ describe('POST /api/trackers', () => {
     expect(notInt.status).toBe(400)
   })
 
+  // Build ticket 27: the client's own cap has to match this exactly, and
+  // this is the one test that would fail if the two ever drifted.
+  it('accepts a thresholdDays right at the 3650-day cap', async () => {
+    const { app, cookie } = await setup()
+
+    const res = await req(app, cookie, 'POST', '/api/trackers', { name: 'a', thresholdDays: 3650 })
+    const body = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(body.thresholdDays).toBe(3650)
+  })
+
   it('rejects an unknown categoryId with 400', async () => {
     const { app, cookie } = await setup()
 
@@ -157,6 +169,43 @@ describe('POST /api/trackers', () => {
     })
 
     expect(res.status).toBe(400)
+  })
+
+  it('409s a client id that already belongs to another tracker', async () => {
+    const { app, cookie } = await setup()
+    await req(app, cookie, 'POST', '/api/trackers', { id: 'dup-id', name: 'first' })
+
+    const res = await req(app, cookie, 'POST', '/api/trackers', { id: 'dup-id', name: 'second' })
+    const body = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(body).toEqual({ error: 'id already exists' })
+  })
+
+  it('409s a colliding inline variant id and leaves no half-built tracker behind', async () => {
+    const { app, cookie } = await setup()
+    await req(app, cookie, 'POST', '/api/trackers', {
+      name: 'first',
+      variants: [{ id: 'dup-variant', name: 'v' }],
+    })
+
+    const res = await req(app, cookie, 'POST', '/api/trackers', {
+      id: 'second-tracker',
+      name: 'second',
+      variants: [{ id: 'dup-variant', name: 'v' }],
+    })
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'id already exists' })
+
+    // the rolled-back Tracker row must be gone, or the caller's retry with
+    // the same id would 409 on the Tracker instead and never succeed.
+    const retry = await req(app, cookie, 'POST', '/api/trackers', {
+      id: 'second-tracker',
+      name: 'second',
+      variants: [{ name: 'v' }],
+    })
+    expect(retry.status).toBe(201)
   })
 })
 
@@ -415,6 +464,21 @@ describe('POST /api/trackers/:id/variants', () => {
     })
 
     expect(res.status).toBe(400)
+  })
+
+  it('409s a client id that already belongs to another variant', async () => {
+    const { app, cookie } = await setup()
+    const tracker = await (await req(app, cookie, 'POST', '/api/trackers', { name: 't' })).json()
+    await req(app, cookie, 'POST', `/api/trackers/${tracker.id}/variants`, { id: 'dup-variant', name: 'first' })
+
+    const res = await req(app, cookie, 'POST', `/api/trackers/${tracker.id}/variants`, {
+      id: 'dup-variant',
+      name: 'second',
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(body).toEqual({ error: 'id already exists' })
   })
 })
 

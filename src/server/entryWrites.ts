@@ -32,7 +32,7 @@ export interface CreateEntryInput {
 
 export type CreateEntryResult =
   | { readonly ok: true; readonly entry: Entry; readonly created: boolean }
-  | { readonly ok: false; readonly status: 400 | 404; readonly error: string }
+  | { readonly ok: false; readonly status: 400 | 404 | 409; readonly error: string }
 
 /**
  * A future occurredAt degrades to an editable server-now instead of being
@@ -46,10 +46,19 @@ export function clampFutureOccurredAt(occurredAt: string | undefined, nowIso: st
 
 export function createEntry(db: Db, input: CreateEntryInput): CreateEntryResult {
   // Idempotency (docs/spec.md § Idempotency): a replayed outbox id returns
-  // the existing row untouched, before any other validation runs.
+  // the existing row untouched, before any other validation runs — but only
+  // when it's actually a replay of *this* write. An id that already belongs
+  // to a different tracker is a client bug (or two different writes racing
+  // on the same id), not a retry, and returning the other tracker's row
+  // silently would hide that.
   if (input.id) {
     const existing = db.select().from(entries).where(eq(entries.id, input.id)).get()
-    if (existing) return { ok: true, entry: existing, created: false }
+    if (existing) {
+      if (existing.trackerId !== input.trackerId) {
+        return { ok: false, status: 409, error: 'id belongs to another tracker' }
+      }
+      return { ok: true, entry: existing, created: false }
+    }
   }
 
   const tracker = db.select().from(trackers).where(eq(trackers.id, input.trackerId)).get()

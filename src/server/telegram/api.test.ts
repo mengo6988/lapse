@@ -19,8 +19,21 @@ function bodyOf(fetchMock: ReturnType<typeof stubFetch>): Record<string, unknown
   return JSON.parse(initOf(fetchMock).body as string)
 }
 
+/** A fetch that never settles on its own — it only rejects if its signal aborts, same as the real thing. */
+function stubHangingFetch() {
+  const fetchMock = vi.fn(
+    (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('getUpdates', () => {
@@ -42,13 +55,27 @@ describe('getUpdates', () => {
     )
   })
 
-  it('passes the abort signal through, so a shutdown does not wait out the poll', async () => {
-    const fetchMock = stubFetch({ ok: true, result: [] })
+  it('propagates an external abort into the in-flight request, so a shutdown does not wait out the poll', async () => {
+    const fetchMock = stubHangingFetch()
     const controller = new AbortController()
 
-    await getUpdates(BOT_TOKEN, 0, 30, controller.signal)
+    const promise = getUpdates(BOT_TOKEN, 0, 30, controller.signal)
+    controller.abort()
 
-    expect(initOf(fetchMock).signal).toBe(controller.signal)
+    await expect(promise).rejects.toThrow(TelegramError)
+    expect(initOf(fetchMock).signal?.aborted).toBe(true)
+  })
+
+  it("gives up a little after Telegram's own long-poll timeout, so a dead socket can't hang the loop", async () => {
+    vi.useFakeTimers()
+    const fetchMock = stubHangingFetch()
+
+    const promise = getUpdates(BOT_TOKEN, 0, 30, new AbortController().signal)
+    const assertion = expect(promise).rejects.toThrow(TelegramError)
+    await vi.advanceTimersByTimeAsync(30_000 + 10_000)
+    await assertion
+
+    expect(initOf(fetchMock).signal?.aborted).toBe(true)
   })
 })
 
@@ -79,5 +106,17 @@ describe('sendMessage', () => {
     await sendMessage(BOT_TOKEN, { chatId: '4242', text: 'nothing slipping', keyboard: null })
 
     expect(bodyOf(fetchMock)).not.toHaveProperty('reply_markup')
+  })
+
+  it("gives up after 10 seconds, so one stuck reply can't block the loop from answering the next message", async () => {
+    vi.useFakeTimers()
+    const fetchMock = stubHangingFetch()
+
+    const promise = sendMessage(BOT_TOKEN, { chatId: '4242', text: 'logged ✓ vacuuming' })
+    const assertion = expect(promise).rejects.toThrow(TelegramError)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await assertion
+
+    expect(initOf(fetchMock).signal?.aborted).toBe(true)
   })
 })
