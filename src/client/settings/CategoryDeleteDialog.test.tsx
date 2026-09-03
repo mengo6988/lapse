@@ -10,7 +10,7 @@ function renderDialog(props: Partial<ComponentProps<typeof CategoryDeleteDialog>
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onCancel = vi.fn()
   const onDeleted = vi.fn()
-  render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <CategoryDeleteDialog
         categoryId="house"
@@ -22,7 +22,7 @@ function renderDialog(props: Partial<ComponentProps<typeof CategoryDeleteDialog>
       />
     </QueryClientProvider>,
   )
-  return { onCancel, onDeleted }
+  return { ...result, onCancel, onDeleted }
 }
 
 describe('CategoryDeleteDialog', () => {
@@ -36,6 +36,29 @@ describe('CategoryDeleteDialog', () => {
     const dialog = screen.getByRole('dialog', { name: 'delete house' })
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(screen.getByText(/uncategorised/)).toBeTruthy()
+  })
+
+  it('portals to document.body rather than rendering as a descendant of its caller', () => {
+    const { container } = renderDialog()
+
+    // portaled to document.body (see CategoryDeleteDialog.tsx), not a
+    // descendant of RTL's own container.
+    expect(container.querySelector('.confirm-dialog')).toBeNull()
+    expect(document.querySelector('.confirm-dialog')).toBeTruthy()
+  })
+
+  it('marks #app-root inert for as long as the dialog is mounted', () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    const { unmount } = renderDialog()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    unmount()
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 
   it('cancel is the button that receives focus on open, not the destructive action', async () => {

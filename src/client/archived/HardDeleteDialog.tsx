@@ -7,7 +7,17 @@
  * permits importing from src/client/tracker) rather than an inline expand.
  * "cancel" is the first focusable element in the dialog, so useFocusTrap's
  * open-focus behaviour lands on it, not on the destructive action.
+ *
+ * A focus trap alone still leaves the archived list behind this dialog
+ * readable and reachable by a screen reader's virtual cursor, which can
+ * wander past the trap the same way it can with the queued sheet — see
+ * src/client/outbox/QueuedSheet.tsx and useInertBackground.ts's doc comment.
+ * Portaled to document.body for the same reason: it must land as a DOM
+ * sibling of #app-root, not a descendant, or useInertBackground would inert
+ * this dialog along with the rest of the app (.scratch/audit-fixes/spec.md decision 6).
  */
+import { createPortal } from 'react-dom'
+import { useInertBackground } from '../shell/useInertBackground'
 import { useFocusTrap } from '../tracker/useFocusTrap'
 import { TrackerApiError } from '../tracker/mutationClient'
 import { useEntryCountQuery } from './useEntryCount'
@@ -33,6 +43,10 @@ export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCan
   const containerRef = useFocusTrap<HTMLDivElement>(true, onCancel, restoreFocusTo)
   const countQuery = useEntryCountQuery(trackerId, true)
   const hardDelete = useHardDeleteTracker()
+  // this dialog is only ever mounted (by ArchivedRoute.tsx) for its full
+  // open + exit-latch lifetime, so "mounted" already is "active" — see
+  // src/client/shell/useInertBackground.ts.
+  useInertBackground(true)
 
   function handleConfirm() {
     hardDelete.mutate(trackerId, { onSuccess: onDeleted })
@@ -40,7 +54,9 @@ export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCan
 
   const deleteError = hardDelete.error instanceof TrackerApiError ? hardDelete.error.message : undefined
 
-  return (
+  // portaled to document.body so the dialog lands as a DOM sibling of
+  // #app-root, not a descendant — see useInertBackground.ts's doc comment.
+  return createPortal(
     <>
       <div className={closing ? 'tracker-sheet-scrim tracker-sheet-scrim--closing' : 'tracker-sheet-scrim'} onClick={onCancel} />
       <div
@@ -91,6 +107,7 @@ export function HardDeleteDialog({ trackerId, trackerName, restoreFocusTo, onCan
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

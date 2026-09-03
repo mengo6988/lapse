@@ -10,7 +10,7 @@ function renderDialog(props: Partial<ComponentProps<typeof HardDeleteDialog>> = 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onCancel = vi.fn()
   const onDeleted = vi.fn()
-  render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <HardDeleteDialog
         trackerId="tracker-1"
@@ -22,7 +22,7 @@ function renderDialog(props: Partial<ComponentProps<typeof HardDeleteDialog>> = 
       />
     </QueryClientProvider>,
   )
-  return { onCancel, onDeleted }
+  return { ...result, onCancel, onDeleted }
 }
 
 describe('HardDeleteDialog', () => {
@@ -36,6 +36,31 @@ describe('HardDeleteDialog', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'delete ancient chore' })
     expect(dialog.getAttribute('aria-modal')).toBe('true')
+  })
+
+  it('portals to document.body rather than rendering as a descendant of its caller', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ entries: [], nextCursor: null }) }))
+    const { container } = renderDialog()
+
+    // portaled to document.body (see HardDeleteDialog.tsx), not a descendant
+    // of RTL's own container.
+    expect(container.querySelector('.confirm-dialog')).toBeNull()
+    expect(document.querySelector('.confirm-dialog')).toBeTruthy()
+  })
+
+  it('marks #app-root inert for as long as the dialog is mounted', () => {
+    const appRoot = document.createElement('div')
+    appRoot.id = 'app-root'
+    document.body.appendChild(appRoot)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ entries: [], nextCursor: null }) }))
+    const { unmount } = renderDialog()
+
+    expect(appRoot.hasAttribute('inert')).toBe(true)
+
+    unmount()
+    expect(appRoot.hasAttribute('inert')).toBe(false)
+
+    appRoot.remove()
   })
 
   it('shows a loading state, then the exact entry count once fetched', async () => {
