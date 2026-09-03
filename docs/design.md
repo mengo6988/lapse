@@ -78,19 +78,26 @@ Canonical strings (extend here, not ad-hoc):
 | Context | String |
 |---|---|
 | Log toast | `logged ✓` + **undo** action |
+| Any screen, data not arrived yet | `loading…` |
 | Home, nothing due | `nothing slipping` |
+| Home and List, load failed | `couldn't load trackers — try again` |
 | List, empty | `nothing here yet — add your first tracker` |
 | Activity, empty | `nothing logged yet` |
 | Activity, load failed | `couldn't load activity — try again` |
 | Search, no hits | `no matches` |
 | Archived, empty | `nothing archived` |
 | Detail, history load failed | `couldn't load history — try again` |
+| Same-day relative time (Home, Activity day header, Detail history) | `today` |
 | Any save that failed unattributably | `couldn't save — try again` |
+| Custom Threshold over the cap | `up to 10 years` |
+| Entry edit sheet, delete action | `delete entry` |
+| Hard-delete dialog, confirm action | `delete forever` |
 | Hard-delete dialog, entry count unavailable | `couldn't check entry count — try again` |
 | Deep link to a Tracker that is gone | `tracker not found` (mirrors the server's own 404) |
 | Login failure | `wrong password` · `couldn't log in` (anything that isn't a wrong password) |
 | Pending chip | `2 queued` (count + clock glyph) |
 | Queued sheet title | `queued` |
+| Queued sheet, empty | `nothing queued` |
 | Queued sheet actions | `retry all` · `discard` |
 | Queued entry that the server rejected | `failed` |
 | Queued entry whose Tracker is gone | `unknown tracker` · `<tracker> · unknown variant` |
