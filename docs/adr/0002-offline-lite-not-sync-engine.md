@@ -7,3 +7,7 @@ We deliberately did NOT adopt a local-first sync engine (ElectricSQL, PowerSync,
 ## Amendment (2026-08-15, offline-lite grill)
 
 Storage moved from localStorage to **IndexedDB** for both the outbox (via `idb`) and the persisted query cache (via `createAsyncStoragePersister` + `idb-keyval`): iOS localStorage is ~5MB shared-origin and synchronous on the optimistic-update path. Installed home-screen PWAs get their own storage partition exempt from Safari's 7-day tab eviction — this hinges on the app being added to the home screen; all client storage remains a disposable cache, the server is the record of truth. Outbox scope confirmed as `POST /entries` only; other mutations fail fast offline. TanStack mutation persistence and outbox libraries rejected (registration trap, resume race, parallel replay — see outbox research). Background Sync API unsupported on iOS: replay is foreground-only. Implementation contract: `docs/tech-stack.md` § Offline-lite.
+
+## Amendment (2026-09-02, audit fixes)
+
+The line above is stale: outbox scope has since widened to include `DELETE /entries/:id` alongside `POST /entries` (build ticket 17, the edit sheet's delete going through the outbox the same way undo does) — see `docs/tech-stack.md` § Outbox for the current scope.

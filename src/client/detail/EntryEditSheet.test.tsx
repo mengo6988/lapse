@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Entry } from '../api'
@@ -74,8 +74,13 @@ describe('EntryEditSheet', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('delete requires a two-step confirm before DELETE fires', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+  it('delete requires a two-step confirm, then closes without waiting on the network (audit-fixes decision 2: delete goes through the outbox, same as undo)', async () => {
+    // a fetch that never settles: the sheet has to close on the strength of
+    // the cache update and the queued write alone, same as it would offline.
+    // Asserting a DELETE was sent belongs to useDeleteEntry.test.tsx and
+    // entryOutbox.test.ts now — this is the sheet-level regression for "the
+    // success path no longer waits on the network."
+    const fetchMock = vi.fn(() => new Promise(() => {}))
     vi.stubGlobal('fetch', fetchMock)
     const { onClose } = renderSheet()
     const user = userEvent.setup()
@@ -86,8 +91,7 @@ describe('EntryEditSheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'delete' }))
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/entries/e1', expect.objectContaining({ method: 'DELETE' }))
-    expect(onClose).toHaveBeenCalled()
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('cancelling the delete confirm leaves the Entry untouched', async () => {
