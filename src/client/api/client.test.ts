@@ -13,6 +13,25 @@ function stubFetch(response: Partial<Response> & { json?: () => Promise<unknown>
   return fetchMock
 }
 
+/**
+ * A fetch stub that behaves like the real thing with respect to its
+ * `init.signal`: already aborted at call time rejects right away, aborted
+ * later rejects then, and otherwise the returned promise never settles on
+ * its own. Used for the deadline tests below, where what unblocks the
+ * request is the abort, not a resolved response.
+ */
+function stubAbortAwareFetch() {
+  const fetchMock = vi.fn((_path: string, init?: RequestInit) => {
+    return new Promise((_resolve, reject) => {
+      const abort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+      if (init?.signal?.aborted) abort()
+      else init?.signal?.addEventListener('abort', abort, { once: true })
+    })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
 describe('apiFetch', () => {
   beforeEach(() => {
     session.reset()
@@ -20,6 +39,7 @@ describe('apiFetch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('returns the parsed JSON body on success', async () => {
@@ -56,5 +76,38 @@ describe('apiFetch', () => {
     await apiFetch('/api/bootstrap')
 
     expect(fetchMock).toHaveBeenCalledWith('/api/bootstrap', expect.objectContaining({ credentials: 'same-origin' }))
+  })
+
+  it('rejects with a null-status ApiError after the deadline when the request never settles', async () => {
+    vi.useFakeTimers()
+    stubAbortAwareFetch()
+
+    const pending = apiFetch('/api/bootstrap')
+    const assertion = expect(pending).rejects.toMatchObject({ name: 'ApiError', status: null })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await assertion
+
+    vi.useRealTimers()
+  })
+
+  it('merges a caller-supplied signal with the deadline: the caller aborting rejects without waiting 15s', async () => {
+    stubAbortAwareFetch()
+    const controller = new AbortController()
+
+    const pending = apiFetch('/api/bootstrap', { signal: controller.signal })
+    controller.abort()
+
+    await expect(pending).rejects.toMatchObject({ name: 'ApiError', status: null })
+  })
+
+  it('merges a caller-supplied signal with the deadline: an already-aborted caller signal rejects immediately', async () => {
+    stubAbortAwareFetch()
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(apiFetch('/api/bootstrap', { signal: controller.signal })).rejects.toMatchObject({
+      name: 'ApiError',
+      status: null,
+    })
   })
 })

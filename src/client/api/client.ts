@@ -15,11 +15,24 @@
  * and docs/design.md requires those next to the field that caused them.
  * This is the only fetch path in the client, so session handling has one
  * definition instead of drifting between two wrappers.
+ *
+ * Every request also carries a deadline (.scratch/audit-fixes/spec.md
+ * decision 1): a request that never settles — a flaky cellular hop, a proxy
+ * that swallows the connection — would otherwise hold the outbox's drain
+ * lock open forever, turning away every later retry trigger until the app is
+ * force-closed. A timeout aborts the fetch, which lands in the same catch
+ * below as a dropped connection and throws the same null-status `ApiError`,
+ * so the outbox already retries it on the normal backoff with nothing to
+ * change there. The deadline merges with any signal a caller already passes
+ * rather than replacing it, and is a module constant rather than
+ * configuration — nothing here calls for tuning it per request. jsdom's
+ * `AbortSignal` lacks the `timeout`/`any` statics Node has, so this is a
+ * plain timer plus an `AbortController` instead of leaning on either.
  */
 import { session } from '../auth/session'
 
 export class ApiError extends Error {
-  /** null for a request that never reached the server (offline, DNS, ...). */
+  /** null for a request that never reached the server (offline, DNS, a timeout, ...). */
   readonly status: number | null
   /** the parsed error body, or undefined when there wasn't a readable one. */
   readonly body: unknown
@@ -32,12 +45,33 @@ export class ApiError extends Error {
   }
 }
 
+/** not configuration — see this module's header comment. */
+const REQUEST_DEADLINE_MS = 15_000
+
+/**
+ * An `AbortController` whose signal fires either when the deadline elapses
+ * or when a caller-supplied signal aborts, whichever comes first. `clear`
+ * must run once the request settles either way, or the timer outlives it.
+ */
+function withDeadline(callerSignal?: AbortSignal | null): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_DEADLINE_MS)
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort()
+    else callerSignal.addEventListener('abort', () => controller.abort(), { once: true })
+  }
+  return { signal: controller.signal, clear: () => clearTimeout(timer) }
+}
+
 export async function apiFetch(path: string, init?: RequestInit): Promise<unknown> {
+  const { signal, clear } = withDeadline(init?.signal)
   let res: Response
   try {
-    res = await fetch(path, { ...init, credentials: 'same-origin' })
+    res = await fetch(path, { ...init, signal, credentials: 'same-origin' })
   } catch {
     throw new ApiError(null, `request to ${path} could not be sent`)
+  } finally {
+    clear()
   }
 
   if (res.status === 401) {

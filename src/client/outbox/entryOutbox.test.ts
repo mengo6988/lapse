@@ -105,6 +105,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
   session.reset()
 })
 
@@ -513,6 +514,49 @@ describe('drainOutboxOnce', () => {
     resolve({ ok: true, status: 201, json: async () => ({}) } as Response)
     await pass
 
+    expect(outboxStore.read()).toEqual([])
+  })
+
+  it("does not lock the drain forever when a request hangs past apiFetch's deadline (audit-fixes decision 1): attempts bump to 1, and a later pass reaches the second item", async () => {
+    // the bug this reproduces: before apiFetch had a deadline, a request that
+    // never settled left runPass's `await apiFetch(...)` never returning,
+    // which left drainOutboxOnce's `draining` guard stuck true — every later
+    // trigger (online, visibilitychange, another tap, retry-all) was turned
+    // away by the re-entrancy guard forever, and the queued Entry sat there
+    // until the app was force-closed.
+    vi.useFakeTimers()
+    let calls = 0
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      calls += 1
+      // only the very first call (item 'a''s first attempt) hangs — it
+      // rejects once its deadline signal aborts, exactly like a real fetch
+      // would. Every later call (the retry of 'a', then 'b') resolves.
+      if (calls === 1) {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')))
+        })
+      }
+      return Promise.resolve({ ok: true, status: 201, json: async () => ({}) } as Response)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await outboxStore.setItems([createItem('a'), createItem('b')])
+
+    const firstPass = drainOutboxOnce()
+    await vi.advanceTimersByTimeAsync(15_000)
+    const firstResult = await firstPass
+
+    // the drain lock is released: attempts bumped to 1, and 'b' — behind 'a'
+    // in the queue — is untouched by this pass, same as any other retryable
+    // failure (see "stops the pass on a network failure" above).
+    expect(firstResult).toEqual({ retryAfterAttempts: 1 })
+    expect(outboxStore.read()).toEqual([createItem('a', { attempts: 1 }), createItem('b')])
+
+    // a later trigger (the drain hook's backoff timer, 'online', or the user
+    // tapping retry-all) is no longer turned away — its pass reaches 'b'.
+    const secondResult = await drainOutboxOnce()
+
+    expect(calls).toBe(3)
+    expect(secondResult).toEqual({ retryAfterAttempts: null })
     expect(outboxStore.read()).toEqual([])
   })
 })
