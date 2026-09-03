@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs'
 import { serve } from '@hono/node-server'
-import { serveStatic } from '@hono/node-server/serve-static'
 import { createApp } from './app.js'
 import { scheduleBackups } from './backupSchedule.js'
 import { openDatabase } from './db.js'
@@ -17,7 +16,13 @@ function boot() {
   seedCategories(db)
   scheduleBackups(db.$client, env.DATA_DIR)
 
-  const app = createApp({ db, password: env.LAPSE_PASSWORD, apiToken: env.LAPSE_API_TOKEN })
+  const clientBuilt = existsSync(CLIENT_DIR)
+  const app = createApp({
+    db,
+    password: env.LAPSE_PASSWORD,
+    apiToken: env.LAPSE_API_TOKEN,
+    clientDir: clientBuilt ? CLIENT_DIR : undefined,
+  })
 
   // Both or neither: a bot token with no chat id would answer anyone who
   // finds it. Absent, lapse is exactly what it was before.
@@ -30,23 +35,8 @@ function boot() {
     console.log('telegram bot polling')
   }
 
-  // The service worker and the entry HTML must always be revalidated, or a
-  // deploy is invisible to an installed PWA (docs/tech-stack.md § SW update).
-  app.use('/sw.js', async (c, next) => {
-    await next()
-    c.header('Cache-Control', 'max-age=0, must-revalidate')
-  })
-  app.use('/index.html', async (c, next) => {
-    await next()
-    c.header('Cache-Control', 'max-age=0, must-revalidate')
-  })
-
-  if (existsSync(CLIENT_DIR)) {
-    app.use('/*', serveStatic({ root: CLIENT_DIR }))
-    // SPA fallback: anything not a file and not /api is the app shell.
-    app.get('*', serveStatic({ path: `${CLIENT_DIR}/index.html` }))
-  } else {
-    app.get('/', (c) => c.text('lapse — client not built yet (npm run build)'))
+  if (!clientBuilt) {
+    app.get('/', (c) => c.text('lapse — client not built yet (pnpm build)'))
   }
 
   serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {

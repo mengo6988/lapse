@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app.js'
 import { createTestDb } from './testing.js'
@@ -5,6 +8,15 @@ import { createTestDb } from './testing.js'
 const PASSWORD = 'correct horse battery staple'
 
 const testApp = () => createApp({ db: createTestDb(), password: PASSWORD })
+
+/** A temporary built-client directory, per docs/tech-stack.md § Repo shape. */
+function buildClientDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'lapse-client-'))
+  writeFileSync(join(dir, 'index.html'), '<!doctype html><title>lapse</title>')
+  writeFileSync(join(dir, 'sw.js'), '// service worker')
+  writeFileSync(join(dir, 'app.js'), '// an ordinary asset — neither the shell nor the worker')
+  return dir
+}
 
 describe('GET /api/health', () => {
   it('answers ok without a session', async () => {
@@ -222,5 +234,66 @@ describe('bearer token access', () => {
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
 
     expect((await app.request('/api/bootstrap', { headers: { cookie } })).status).toBe(200)
+  })
+})
+
+describe('static client serving', () => {
+  it('revalidates the app shell served at the root path', async () => {
+    const app = createApp({ db: createTestDb(), password: PASSWORD, clientDir: buildClientDir() })
+
+    const res = await app.request('/')
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBe('max-age=0, must-revalidate')
+  })
+
+  it('revalidates the app shell served for a deep link via the SPA fallback', async () => {
+    const app = createApp({ db: createTestDb(), password: PASSWORD, clientDir: buildClientDir() })
+
+    const res = await app.request('/trackers/some-id')
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBe('max-age=0, must-revalidate')
+  })
+
+  it('revalidates the service worker script itself', async () => {
+    const app = createApp({ db: createTestDb(), password: PASSWORD, clientDir: buildClientDir() })
+
+    const res = await app.request('/sw.js')
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBe('max-age=0, must-revalidate')
+  })
+
+  it('leaves an ordinary static asset uncached by this rule', async () => {
+    const app = createApp({ db: createTestDb(), password: PASSWORD, clientDir: buildClientDir() })
+
+    const res = await app.request('/app.js')
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBeNull()
+  })
+})
+
+describe('unknown /api/* paths', () => {
+  it('answers a JSON 404 instead of the HTML shell', async () => {
+    const app = testApp()
+    const login = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: PASSWORD }),
+    })
+    const cookie = login.headers.get('set-cookie')!.split(';')[0]!
+
+    const res = await app.request('/api/does-not-exist', { headers: { cookie } })
+
+    expect(res.status).toBe(404)
+    await expect(res.json()).resolves.toEqual({ error: 'not found' })
+  })
+
+  it('still 401s an unauthenticated request, so route existence never leaks before auth', async () => {
+    const res = await testApp().request('/api/does-not-exist')
+
+    expect(res.status).toBe(401)
   })
 })
